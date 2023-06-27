@@ -11,10 +11,10 @@ class ContestsTest(TestCase):
     def test_create_contest(self):
         contest = Contest(
             title='Contest',
-            short_name='slug',
+            short_name='slashud',
             start_time=timezone.now(),
             duration=timedelta(hours=5),
-            scoring_type=ScoringType.SCORING,
+            scoring_type=ScoringType.SCORING_WITH_BYTE_COUNT,
         )
         contest.save()
         contest.refresh_from_db()

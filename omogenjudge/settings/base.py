@@ -147,7 +147,7 @@ LOGGING: dict = {
 
 MAILJET_API_KEY = ''
 MAILJET_API_SECRET = ''
-REQUIRE_EMAIL_AUTH = True
+REQUIRE_EMAIL_AUTH = False
 
 OAUTH_DETAILS: dict[str, Any] = {
 }

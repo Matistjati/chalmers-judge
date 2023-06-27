@@ -5,6 +5,8 @@ import toml
 with open("/etc/omogen/web.toml", "r") as f:
     config = toml.load(f)
 
+DEBUG=True
+
 SECRET_KEY = config['web']['secret_key']
 
 MAILJET_API_KEY = config['email']['mailjet_api_key']
@@ -12,6 +14,7 @@ MAILJET_API_SECRET = config['email']['mailjet_api_secret']
 
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+SECURE_HSTS_SECONDS = 31536000
 SECURE_SSL_REDIRECT = True
 
 ALLOWED_HOSTS = ['*']

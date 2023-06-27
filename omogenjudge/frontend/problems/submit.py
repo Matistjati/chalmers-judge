@@ -79,6 +79,8 @@ def submit(request: OmogenRequest, short_name: str, user: Account, contest: Cont
     if not form.is_valid():
         return JsonResponse({'errors': form.errors})
     language = Language(form.cleaned_data['language'])
+    if False and language!="python3":
+        return JsonResponse({'errors': {'upload_files': ['Only python is allowed for this contest. Chosen language: '+str(language)]}})
     submission = create_submission(
         owner=user,
         problem=problem,

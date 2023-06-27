@@ -11,7 +11,7 @@ from omogenjudge.storage.models import Contest, ContestProblem, ScoringType, Sta
     Team, Verdict
 from omogenjudge.submissions.lookup import list_queue_submissions
 from omogenjudge.teams.lookup import contest_teams
-
+import base64
 
 @dataclasses.dataclass
 class ProblemResult:
@@ -237,6 +237,74 @@ class Scoring(ScoreboardMaker):
         return False
 
 
+class ScoringWithByteCount(ScoreboardMaker):
+    def __init__(self, contest: Contest, problems: List[ContestProblem], teams: List[Team], **kwargs):
+        super(ScoringWithByteCount, self).__init__(contest, problems, teams, tiebreak=max, **kwargs)
+        self.problem_subtasks = {}
+        for problem, scoreboard_problem in zip(self.problems, self.scoreboard_problems):
+            subtask_scores = get_subtask_scores(problem.problem.current_version)
+            self.problem_subtasks[problem.problem_id] = subtask_scores
+            scoreboard_problem.subtask_scores = subtask_scores
+            scoreboard_problem.max_score = sum(subtask_scores)
+
+    def format_tiebreak(self, minutes: float) -> str:
+        return str(minutes)
+        minutes = int(minutes)
+        neg = minutes < 0
+        if neg: minutes = -minutes
+        return ("-" if neg else "") + "{:02d}:{:02d}".format(minutes // 60, minutes % 60)
+
+    def _process_problem(self, submissions: List[Submission], scoreboard_problem: ScoreboardProblem,
+                         start_time: Optional[datetime.datetime]) -> ProblemResult:
+        problem_result = ProblemResult(
+            subtask_scores=[0] * len(scoreboard_problem.subtask_scores)
+        )
+        problem_result.tiebreak = 100000000
+        best_score = 0
+        for sub in submissions:
+            run = sub.current_run
+            status = Status(run.status)
+            if status in [Status.RUNNING, Status.QUEUED, Status.COMPILING]:
+                problem_result.pending += 1
+                continue
+            if status in [Status.JUDGE_ERROR, Status.COMPILE_ERROR]:
+                continue
+            assert status == Status.DONE
+
+            problem_result.tries += 1
+
+            score = 0
+            for i, group_run_score in enumerate(
+                    get_submission_subtask_scores(list(run.group_runs.all()), len(scoreboard_problem.subtask_scores))):
+                problem_result.subtask_scores[i] = max(problem_result.subtask_scores[i], group_run_score)
+                score += group_run_score
+
+            num_bytes = 0
+            for file, content in sub.submission_files['files'].items():
+                a = base64.b64decode(content)
+                num_carriage = 0
+                for b in a:
+                    if b==13:
+                        num_carriage+=1
+
+                num_bytes += len(a)-num_carriage
+            if score == best_score:
+                problem_result.tiebreak = min(problem_result.tiebreak, num_bytes)
+            elif score > best_score:
+                problem_result.tiebreak = num_bytes
+            best_score = max(best_score,score)
+
+        problem_result.problem_score = best_score
+        return problem_result
+
+    def _team_sort_key(self, team):
+        return -team.total_score, team.tiebreak
+
+    @property
+    def has_penalty(self):
+        return True
+
+
 class BinaryWithPenalty(ScoreboardMaker):
 
     def _process_problem(self, submissions: List[Submission], scoreboard_problem: ScoreboardProblem,
@@ -276,6 +344,7 @@ class BinaryWithPenalty(ScoreboardMaker):
 _SCOREBOARDS: Dict[ScoringType, Type[ScoreboardMaker]] = {
     ScoringType.BINARY_WITH_PENALTY: BinaryWithPenalty,
     ScoringType.SCORING: Scoring,
+    ScoringType.SCORING_WITH_BYTE_COUNT: ScoringWithByteCount,
 }
 
 
