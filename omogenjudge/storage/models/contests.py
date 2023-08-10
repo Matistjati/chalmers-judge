@@ -14,6 +14,7 @@ class ScoringType(StrEnum):
     BINARY_WITH_PENALTY = 'binary with penalty'
     SCORING = 'scoring'
     SCORING_WITH_BYTE_COUNT = 'scoring with byte count'
+    SCORING_BY_RUNTIME = "scoring by runtime"
 
 
 class Contest(models.Model):
