@@ -306,7 +306,7 @@ class ScoringWithByteCount(ScoreboardMaker):
 
 class ScoringByRuntime(ScoreboardMaker):
     def __init__(self, contest: Contest, problems: List[ContestProblem], teams: List[Team], **kwargs):
-        super(ScoringByRuntime, self).__init__(contest, problems, teams, tiebreak=max, **kwargs)
+        super(ScoringByRuntime, self).__init__(contest, problems, teams, tiebreak=sum, **kwargs)
         self.problem_subtasks = {}
         for problem, scoreboard_problem in zip(self.problems, self.scoreboard_problems):
             subtask_scores = get_subtask_scores(problem.problem.current_version)
