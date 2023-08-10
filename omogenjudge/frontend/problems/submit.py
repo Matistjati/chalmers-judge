@@ -18,11 +18,27 @@ from omogenjudge.util.django_types import OmogenRequest
 
 SOURCE_CODE_LIMIT = 200000
 
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+class MultipleFileField(forms.FileField):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("widget", MultipleFileInput())
+        super().__init__(*args, **kwargs)
+
+    def clean(self, data, initial=None):
+        single_file_clean = super().clean
+        if isinstance(data, (list, tuple)):
+            result = [single_file_clean(d, initial) for d in data]
+        else:
+            result = single_file_clean(data, initial)
+        return result
+
 
 class SubmitForm(forms.Form):
-    upload_files = forms.FileField(
+    upload_files = MultipleFileField(
         label="",
-        widget=forms.ClearableFileInput(attrs={'multiple': True, 'class': 'form-control'}))
+        widget=MultipleFileInput(attrs={'class': 'form-control'}))
     language = forms.ChoiceField(
         label="",
         choices=Language.as_choices(),
@@ -79,12 +95,10 @@ def submit(request: OmogenRequest, short_name: str, user: Account, contest: Cont
     if not form.is_valid():
         return JsonResponse({'errors': form.errors})
     language = Language(form.cleaned_data['language'])
-    if False and language!="python3":
-        return JsonResponse({'errors': {'upload_files': ['Only python is allowed for this contest. Chosen language: '+str(language)]}})
     submission = create_submission(
         owner=user,
         problem=problem,
         language=language,
-        files={f.name: f.read() for f in request.FILES.getlist('upload_files') if f.name is not None}
+        files={f.name: f.read() for f in form.cleaned_data["upload_files"] if f.name is not None}
     )
     return JsonResponse({'submission_link': reverse_contest('submission', sub_id=submission.submission_id)})
