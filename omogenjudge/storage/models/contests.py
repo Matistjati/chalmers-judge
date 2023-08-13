@@ -38,6 +38,8 @@ class Contest(models.Model):
 
     allow_registration = models.BooleanField(default=False)  # TODO: not implemented
 
+    try_penalty = models.IntegerField(null=False, default=20)
+
     published = models.BooleanField(default=False)
 
     # These properties are cached in order to provide a consistent view of has started/has ended throughout rendering
@@ -60,6 +62,7 @@ class Contest(models.Model):
         if self.flexible_start_window_end_time and self.flexible_start_window_end_time <= timezone.now():
             return True
         return self.has_ended
+
     def is_scoring(self):
         return ScoringType(self.scoring_type) == ScoringType.SCORING
 
