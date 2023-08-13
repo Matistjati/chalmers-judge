@@ -24,3 +24,11 @@ def register_user_for_virtual(contest: Contest, user: Account):
         team = Team(contest=contest, practice=True, contest_start_time=timezone.now())
         team.save()
         TeamMember(team=team, account=user).save()
+    
+def register_user_for_ongoing(contest: Contest, user: Account):
+    with transaction.atomic():
+        if contest_team_for_user(contest, user):
+            raise TeamExists()
+        team = Team(contest=contest, practice=False, contest_start_time=timezone.now())
+        team.save()
+        TeamMember(team=team, account=user).save()

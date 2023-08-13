@@ -30,6 +30,22 @@
             </div>
             {% endif %}
         </li>
+        {% elif not contest_team and contest.has_started %}
+        <li class="list-group-item">
+            <p>
+                To solve the problems, you must join the contest. 
+            </p>
+            {% if user.is_authenticated %}
+            <form class="text-center" action="{{ contest_url('register') }}" method="post">
+                {{ csrf_input }}
+                <button class="btn btn-primary" name="type" value="ongoing">Join contest</button>
+            </form>
+            {% else %}
+            <div class="alert alert-warning mb-0 text-center">
+                You must log in to register.
+            </div>
+            {% endif %}
+        </li>
         {% endif %}
         {% if include_problems %}
             {% for cproblem in contest_problems %}
