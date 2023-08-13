@@ -281,7 +281,7 @@ class ScoringWithCodegolf(ScoreboardMaker):
                 a = base64.b64decode(content)
                 num_windows_newline = 0
                 for i in range(len(a)-1):
-                    if a[i]==13 and b[i+1]==10:
+                    if a[i]==13 and a[i+1]==10:
                         num_windows_newline+=1
 
                 num_bytes += len(a)-num_windows_newline
