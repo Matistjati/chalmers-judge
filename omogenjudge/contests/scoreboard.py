@@ -409,8 +409,8 @@ class ScoringByRuntime(ScoreboardMaker):
             runtime = 0
             for group in run.group_runs.all():
                 verdict = Verdict(group.verdict)
-                #if verdict == Verdict.AC:
-                runtime += 1# max(runtime, group.time_usage_ms)
+                if verdict == Verdict.AC:
+                    runtime += 1# max(runtime, group.time_usage_ms)
             
             if score == best_score:
                 problem_result.tiebreak = min(problem_result.tiebreak, runtime)
