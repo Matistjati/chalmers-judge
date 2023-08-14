@@ -29,6 +29,6 @@ def register_user_for_ongoing(contest: Contest, user: Account):
     with transaction.atomic():
         if contest_team_for_user(contest, user):
             raise TeamExists()
-        team = Team(contest=contest, practice=False, contest_start_time=str(Contest.start_time))
+        team = Team(contest=contest, practice=False, contest_start_time=contest.start_time)
         team.save()
         TeamMember(team=team, account=user).save()
