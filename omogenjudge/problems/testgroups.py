@@ -9,21 +9,30 @@ def _none_score_to_inf(score: Optional[float]) -> float:
         return math.inf
     return score
 
-
-def get_subtask_scores(problem_version: ProblemVersion) -> List[float]:
+def get_subtasks(problem_version: ProblemVersion) -> List[ProblemTestgroup]:
     testgroups = problem_version.testgroups.all()
     secret_group = None
     subtasks: List[ProblemTestgroup] = []
     for group in testgroups:
         name = group.testgroup_name
-        if name == "data/secret":
-            secret_group = group
-        if name.startswith("data/secret/"):
+        if name != "data/secret/" and name.startswith("data/secret/"):
             subtasks.append(group)
+    return subtasks
+    
+
+def get_subtask_scores(problem_version: ProblemVersion) -> List[float]:
+    subtasks = get_subtasks(problem_version)
     # Fallback for scoring problems that have no subtasks
     if not subtasks:
+        testgroups = problem_version.testgroups.all()
+        secret_group = None
+        for group in testgroups:
+            if name == "data/secret/":
+                secret_group = group
+
         assert secret_group, f"No secret group among {testgroups}"
         return [_none_score_to_inf(secret_group.max_score)]
+        
     subtasks.sort(key=lambda key: key.testgroup_name)
     return [_none_score_to_inf(group.max_score) for group in subtasks]
 

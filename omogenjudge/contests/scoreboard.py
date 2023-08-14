@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Type
 from django.utils import timezone
 
 from omogenjudge.problems.lookup import contest_problems_with_grading
-from omogenjudge.problems.testgroups import get_submission_subtask_scores, get_subtask_scores
+from omogenjudge.problems.testgroups import get_submission_subtask_scores, get_subtask_scores, get_subtasks, get_submission_subtask_groups
 from omogenjudge.storage.models import Contest, ContestProblem, ScoringType, Status, Submission, SubmissionGroupRun, \
     Team, Verdict
 from omogenjudge.submissions.lookup import list_queue_submissions
@@ -400,14 +400,19 @@ class ScoringByRuntime(ScoreboardMaker):
 
             problem_result.tries += 1
 
+            # Calculate score
             score = 0
             for i, group_run_score in enumerate(
                     get_submission_subtask_scores(list(run.group_runs.all()), len(scoreboard_problem.subtask_scores))):
                 problem_result.subtask_scores[i] = max(problem_result.subtask_scores[i], group_run_score)
                 score += group_run_score
 
+
+            # Calculate runtime
             runtime = 0
-            for group in run.group_runs.all():
+            # Worst runtime of all accepted groups
+            subtasks = get_subtasks(scoreboard_problem.problem.problem.current_version)
+            for group in get_submission_subtask_groups(run.group_runs.all(), len(subtasks)):
                 verdict = Verdict(group.verdict)
                 if verdict == Verdict.AC:
                     runtime = max(runtime, group.time_usage_ms)
