@@ -238,7 +238,7 @@ class Scoring(ScoreboardMaker):
 
 class ScoringWithCodegolf(ScoreboardMaker):
     def __init__(self, contest: Contest, problems: List[ContestProblem], teams: List[Team], **kwargs):
-        super(ScoringWithCodegolf, self).__init__(contest, problems, teams, tiebreak=max, **kwargs)
+        super(ScoringWithCodegolf, self).__init__(contest, problems, teams, tiebreak=sum, **kwargs)
         self.problem_subtasks = {}
         for problem, scoreboard_problem in zip(self.problems, self.scoreboard_problems):
             subtask_scores = get_subtask_scores(problem.problem.current_version)
@@ -406,7 +406,11 @@ class ScoringByRuntime(ScoreboardMaker):
                 problem_result.subtask_scores[i] = max(problem_result.subtask_scores[i], group_run_score)
                 score += group_run_score
 
-            runtime = sub.current_run.time_usage_ms
+            runtime = 0
+            for group in run.group_runs.all():
+                verdict = Verdict(group.verdict)
+                if verdict == Verdict.AC:
+                    runtime = max(runtime, group.time_usage_ms)
             
             if score == best_score:
                 problem_result.tiebreak = min(problem_result.tiebreak, runtime)
