@@ -1,8 +1,6 @@
 { pkgs }:
 let
-  python = pkgs.python3.withPackages (p: [ p.distutils_extra ]);
-
-  poetrythingy = pkgs.poetry2nix.mkPoetryApplication {
+  python3-omogenjudge = pkgs.poetry2nix.mkPoetryApplication {
     projectDir = builtins.filterSource
       (path: type: type != "directory" || baseNameOf path != "nix") ./..;
 
@@ -21,9 +19,10 @@ let
       });
 
       problemtools = prev.problemtools.overridePythonAttrs (old: {
-        buildInputs = (old.buildInputs or [ ]) ++ [ prev.setuptools ];
+        buildInputs = (old.buildInputs or [ ])
+          ++ [ prev.setuptools pkgs.gmp pkgs.boost ];
         nativeBuildInputs = (old.nativeBuildInputs or [ ])
-          ++ [ pkgs.automake pkgs.autoconf pkgs.gmpxx.dev ];
+          ++ [ pkgs.automake pkgs.autoconf ];
       });
 
       cryptography = prev.cryptography.overridePythonAttrs (old: {
@@ -45,14 +44,20 @@ let
       (path: type: type == "directory" || baseNameOf path != ".sh")
       ../frontend_assets;
     npmDepsHash = "sha256-zoQr55XuVrsLIfQA6DeBJYsVpN2+/5Mt7uYp5XaBM20=";
-    PYTHON = "${python}/bin/python3";
+    PYTHON =
+      "${pkgs.python3.withPackages (p: [ p.distutils_extra ])}/bin/python3";
   };
 
   omogenjudge-web = pkgs.stdenv.mkDerivation {
     name = "omogenjudge-web";
     src = ../.;
-    buildInputs =
-      [ pkgs.bash pkgs.nodejs_18 frontend_assets pkgs.poetry poetrythingy ];
+    buildInputs = [
+      frontend_assets
+      pkgs.bash
+      pkgs.nodejs_18
+      pkgs.poetry
+      python3-omogenjudge
+    ];
     buildPhase = ''
       patchShebangs .
       ./packaging/build-web.sh
