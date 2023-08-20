@@ -11,12 +11,13 @@
   outputs = { self, nixpkgs, flake-utils, nixos-generators }:
     flake-utils.lib.eachDefaultSystem (system:
       let
+        lib = nixpkgs.lib;
         pkgs = import nixpkgs {
           inherit system;
           config.allowUnfree = false;
         };
 
-        pkgsOmogen = import ./nix/packages.nix { inherit pkgs; };
+        pkgsOmogen = import ./nix/packages.nix { inherit lib pkgs; };
       in {
         devShell =
           pkgs.mkShell { nativeBuildInputs = with pkgs; [ bashInteractive ]; };
@@ -24,7 +25,7 @@
         # To run in qemu-kvm
         packages = {
           inherit (pkgsOmogen)
-            omogenjudge-web omogenjudge-queue omogenjudge-host;
+            python3-omogenjudge frontend_assets omogenjudge-web omogenjudge-queue omogenjudge-host;
 
           monolith-vm = nixos-generators.nixosGenerate {
             inherit system;

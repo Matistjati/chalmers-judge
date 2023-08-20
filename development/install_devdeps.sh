@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -e
+set -v
 
 echo "Installing Python for boostrapping"
 sudo apt install python3 python3-dev

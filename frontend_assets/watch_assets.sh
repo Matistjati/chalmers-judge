@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -v
 
 assets_path=`realpath $(dirname $0)`
 output_path=`realpath $(dirname $0)`/../output
