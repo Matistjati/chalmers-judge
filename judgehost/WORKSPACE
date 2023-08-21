@@ -1902,18 +1902,18 @@ go_repository(
 gazelle_dependencies()
 
 ### EVALUATOR LIB:  comment out for local development
-#http_archive(
-#    name = "com_github_jsannemo_omogenexec",
-#    strip_prefix = "omogenexec-1.3.1",
-#    urls = [
-#        "https://github.com/jsannemo/omogenexec/archive/refs/tags/v1.3.1.zip",
-#    ],
-#)
-### EVALUATOR LIB:  uncomment for local development
-local_repository(
+http_archive(
     name = "com_github_jsannemo_omogenexec",
-    path = "../../omogenexec",
+    strip_prefix = "omogenexec-1.3.1",
+    urls = [
+        "https://github.com/jsannemo/omogenexec/archive/refs/tags/v1.3.1.zip",
+    ],
 )
+### EVALUATOR LIB:  uncomment for local development
+#local_repository(
+#    name = "com_github_jsannemo_omogenexec",
+#    path = "../../omogenexec",
+#)
 
 http_archive(
     name = "com_google_protobuf",

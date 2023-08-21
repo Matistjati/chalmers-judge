@@ -18,15 +18,14 @@
         };
 
         pkgsOmogen = import ./nix/packages.nix { inherit lib pkgs; };
+
       in {
-        devShell =
-          pkgs.mkShell { nativeBuildInputs = with pkgs; [ bashInteractive ]; };
+        devShell = pkgs.mkShell {
+          nativeBuildInputs = let p = pkgs; in [ p.bashInteractive ];
+        };
 
         # To run in qemu-kvm
-        packages = {
-          inherit (pkgsOmogen)
-            python3-omogenjudge frontend_assets omogenjudge-web omogenjudge-queue omogenjudge-host;
-
+        packages = pkgsOmogen // {
           monolith-vm = nixos-generators.nixosGenerate {
             inherit system;
             modules = [

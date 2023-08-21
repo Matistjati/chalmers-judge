@@ -48,8 +48,6 @@ let
     PYTHON =
       "${pkgs.python3.withPackages (p: [ p.distutils_extra ])}/bin/python3";
 
-    #nativeBuildInputs = [ pkgs.tree ];
-      #tree --filelimit 20
     installPhase = ''
       mkdir $out
       cp -r static/* $out/
@@ -71,13 +69,10 @@ let
 
   omogenjudge-web = pkgs.stdenv.mkDerivation {
     name = "omogenjudge-web";
-    src = ../.;
-    nativeBuildInputs = [
-      pkgs.bash
-      pkgs.nodejs_18
-      pkgs.poetry
-      python3-omogenjudge
-    ];
+    # Skip the nix/ directory
+    src = builtins.filterSource (path: type: baseNameOf path != "nix") ./..;
+    nativeBuildInputs =
+      [ pkgs.bash pkgs.nodejs_18 python3-omogenjudge ];
     buildPhase = ''
       set -v
       patchShebangs .
@@ -98,10 +93,72 @@ let
     '';
   };
 
-  omogenjudge-queue = pkgs.runCommand "omogenjudge-queue" { } ''
-    ${../.}/packaging/build-queue.sh
+  omogenjudge-impure-bazel-build = let
+    omogenjudge-host-src =
+      builtins.filterSource (path: type: baseNameOf path != ".bazelversion")
+      ../judgehost;
+    omogenjudge-host-build-script = pkgs.writeShellApplication {
+      name = "build-script";
+      runtimeInputs = let p = pkgs; in [ p.bash p.coreutils p.bazel_5 ];
+      text = ''
+        echo NOTE: Bazel may break on ipv6-only networks
+        set -v
+
+        cd ${omogenjudge-host-src}
+        bazel fetch //... --loading_phase_threads=1
+        bazel build //...
+
+        OUT=$(bazel info output_path)
+        QUEUE_DEB="$OUT/k8-fastbuild/bin/queue/deb/omogenjudge-queue_0.0.1_amd64.deb"
+        HOST_DEB="$OUT/k8-fastbuild/bin/judgehost/deb/omogenjudge-host_0.0.2_amd64.deb"
+
+        nix store add-file --dry-run --name omogenjudge-queue.deb "$QUEUE_DEB"
+        nix store add-file --name omogenjudge-queue.deb "$QUEUE_DEB" | xargs nix-store --query --hash
+        nix hash file "$QUEUE_DEB"
+
+        nix store add-file --dry-run --name omogenjudge-host.deb "$HOST_DEB"
+        nix store add-file --name omogenjudge-host.deb "$HOST_DEB" | xargs nix-store --query --hash
+        nix hash file "$HOST_DEB"
+      '';
+    };
+  in pkgs.buildFHSUserEnv {
+    name = "omogenjudge-host";
+    runScript = "${omogenjudge-host-build-script}/bin/build-script";
+    targetPkgs = p: [ p.gcc p.glibc ];
+  };
+  omogenjudge-host-deb = pkgs.requireFile {
+    name = "omogenjudge-host.deb";
+    sha256 = "sha256-oIVUeRsniTYbheMrkpZONcjY8I+jAyRVlI8PY7tQt3w=";
+    message = ''
+      This derivation is built impurely using bazel.
+      Create it using \`nix run .#omogenjudge-impure-bazel-build\`.
+    '';
+  };
+  omogenjudge-queue-deb = pkgs.requireFile {
+    name = "omogenjudge-queue.deb";
+    sha256 = "sha256-9if9npPDbD2HhC0rlXb0jSQ6A9XJ6kbyeYt63yW265U=";
+    message = ''
+      This derivation is built impurely using bazel.
+      Create it using \`nix run .#omogenjudge-impure-bazel-build\`.
+    '';
+  };
+  omogenjudge-host-and-queue = pkgs.runCommand "omogenjudge-host-and-queue" {
+    nativeBuildInputs = [ pkgs.dpkg ];
+  } ''
+      mkdir host queue
+      dpkg-deb -R ${omogenjudge-host-deb} host
+      dpkg-deb -R ${omogenjudge-queue-deb} queue
+
+      mkdir $out
+      install -m 544 host/usr/bin/omogenjudge-host $out
+      install -m 644 host/etc/systemd/system/omogenjudge-host.service $out
+      install -m 644 host/etc/omogen/judgehost.toml $out
+
+      install -m 544 queue/usr/bin/omogenjudge-queue $out
+      install -m 644 queue/etc/systemd/system/omogenjudge-queue.service $out
+      install -m 644 queue/etc/omogen/queue.toml $out
   '';
-  omogenjudge-host = pkgs.runCommand "omogenjudge-host" { } ''
-    ${../.}/packaging/build-host.sh
-  '';
-in { inherit python3-omogenjudge frontend_assets omogenjudge-web omogenjudge-queue omogenjudge-host; }
+in {
+  inherit python3-omogenjudge frontend_assets omogenjudge-web
+    omogenjudge-host-and-queue omogenjudge-impure-bazel-build;
+}
