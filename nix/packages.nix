@@ -1,6 +1,6 @@
 { lib, pkgs }:
 let
-  python3-omogenjudge = pkgs.poetry2nix.mkPoetryApplication {
+  python3-omogenjudge = pkgs.poetry2nix.mkPoetryEnv {
     # Skip the nix/ directory
     projectDir =
       builtins.filterSource (path: type: baseNameOf path != "nix") ./..;
@@ -67,8 +67,8 @@ let
     password = "password placeholder"
   '';
 
-  omogenjudge-web = pkgs.stdenv.mkDerivation {
-    name = "omogenjudge-web";
+  omogenjudge-web-static = pkgs.stdenv.mkDerivation {
+    name = "omogenjudge-web-static";
     # Skip the nix/ directory
     src = builtins.filterSource (path: type: baseNameOf path != "nix") ./..;
     nativeBuildInputs =
@@ -85,11 +85,8 @@ let
       python manage.py collectstatic -c --no-input
     '';
     installPhase = ''
-      cp -r packaging/web/ $out/
-      cp -r omogenjudge $out/
-      cp -r bin $out/
-      cp pyproject.toml $out/
-      cp -r output/static $out/
+      mkdir $out
+      cp -r output/static/* $out/
     '';
   };
 
@@ -158,7 +155,8 @@ let
       install -m 644 queue/etc/systemd/system/omogenjudge-queue.service $out
       install -m 644 queue/etc/omogen/queue.toml $out
   '';
+
 in {
-  inherit python3-omogenjudge frontend_assets omogenjudge-web
+  inherit python3-omogenjudge frontend_assets omogenjudge-web-static
     omogenjudge-host-and-queue omogenjudge-impure-bazel-build;
 }
