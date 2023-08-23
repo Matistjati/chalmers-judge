@@ -423,6 +423,8 @@ class ScoringByRuntime(ScoreboardMaker):
                 problem_result.tiebreak = runtime
             best_score = max(best_score,score)
 
+        if problem_result.tiebreak == 100000000:
+            problem_result.tiebreak = 0
         problem_result.problem_score = best_score
         return problem_result
 
