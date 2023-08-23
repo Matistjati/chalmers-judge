@@ -6,11 +6,13 @@ let
     group = "omogen";
     uwsgi-socket = "127.0.0.1:62542";
   };
+  pythondir =
+    "${pkgs.pkgsOmogen.python3-omogenjudge-application}/lib/python3.10/site-packages";
 in {
   users.users = {
     root = {
       password = " ";
-      packages = [ pkgs.pkgsOmogen.python3-omogenjudge ];
+      packages = [ pkgs.pkgsOmogen.python3-omogenjudge-env ];
     };
     omogen-web = {
       isSystemUser = true;
@@ -80,10 +82,9 @@ in {
       workers = 2;
       socket = cfg.uwsgi-socket;
       module = "omogenjudge.wsgi";
-      chdir =
-        "${pkgs.pkgsOmogen.python3-omogenjudge}/lib/python3.10/site-packages";
+      chdir = pythondir;
       pythonPackages = self:
-        pkgs.pkgsOmogen.python3-omogenjudge.propagatedBuildInputs;
+        pkgs.pkgsOmogen.python3-omogenjudge-application.propagatedBuildInputs;
     };
   };
 
@@ -115,22 +116,44 @@ in {
 
   services.postgresql = {
     enable = true;
-    ensureDatabases = [ "omogenjudge" ];
-    ensureUsers = [{
-      name = "uwsgi";
-      ensurePermissions = { "DATABASE omogenjudge" = "ALL PRIVILEGES"; };
-    }];
+    initialScript = pkgs.writeText "postgresql-initscript" ''
+      CREATE DATABASE omogenjudge;
 
-    authentication = pkgs.lib.mkOverride 10 ''
-      #type database    DBuser      origin-address auth-method
-      host  omogenjudge omogenjudge ::1/128        trust
+      CREATE ROLE omogenjudge WITH LOGIN PASSWORD 'omogenjudge' CREATEDB;
+      GRANT ALL PRIVILEGES ON DATABASE omogenjudge TO omogenjudge;
+
+      CREATE ROLE root;
+      GRANT ALL PRIVILEGES ON DATABASE omogenjudge TO root;
     '';
 
-    #identMap = ''
-    #  # ArbitraryMapName systemUser DBUser
-    #  superuser_map      uwsgi      omogenjudge
-    #'';
+    authentication = ''
+      #type database    DBuser      origin-address auth-method
+      host  omogenjudge omogenjudge ::1/128        trust
+      host  omogenjudge root        ::1/128        trust
+    '';
+
+    identMap = ''
+      # ArbitraryMapName systemUser DBUser
+      superuser_map      uwsgi      omogenjudge
+      superuser_map      root       root
+    '';
   };
+
+  systemd.services."migrate-db" = {
+    enable = true;
+    script = ''
+      # Sleep to allow DB startup
+      sleep 3
+
+      cd ${pythondir}
+      DJANGO_SETTINGS_MODULE=omogenjudge.settings \
+      PRODUCTION=1 \
+      ${pkgs.pkgsOmogen.django-admin}/bin/django-admin migrate
+    '';
+    wantedBy = [ "uwsgi.service" ];
+    serviceConfig = { User = "root"; };
+  };
+  systemd.units."postgresql.service".wantedBy = [ "migrate-db.service" ];
 
   system.stateVersion = "23.11";
 }

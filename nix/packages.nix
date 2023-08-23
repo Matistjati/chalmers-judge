@@ -1,6 +1,6 @@
 { lib, pkgs }:
 let
-  python3-omogenjudge = pkgs.poetry2nix.mkPoetryApplication {
+  python3-omogenjudge-attrset = {
     # Skip the nix/ directory
     projectDir =
       builtins.filterSource (path: type: baseNameOf path != "nix") ./..;
@@ -36,6 +36,28 @@ let
       });
     });
   };
+  python3-omogenjudge-application =
+    pkgs.poetry2nix.mkPoetryApplication python3-omogenjudge-attrset;
+  python3-omogenjudge-env =
+    pkgs.poetry2nix.mkPoetryEnv python3-omogenjudge-attrset;
+  python3-omogenjudge-deps = (pkgs.poetry2nix.mkPoetryPackages
+    python3-omogenjudge-attrset).poetryPackages;
+  test-thingy = pkgs.poetry2nix.mkPoetryEnv (python3-omogenjudge-attrset // {
+    extraPackages = _: [ python3-omogenjudge-application ];
+  });
+
+  # This is a weird workaround around poetry2nix being weird (not supporting running script from a
+  # dependency in the library context of the project).
+  django-admin = let
+    find-django =
+      lib.lists.findFirst (drv: drv.pname == "django") (throw "missing django");
+    django = find-django python3-omogenjudge-deps;
+  in pkgs.writeShellScriptBin "django-admin" ''
+    NIX_PYTHONPREFIX=${python3-omogenjudge-env} \
+    NIX_PYTHONEXECUTABLE=${python3-omogenjudge-env}/bin/python3.10 \
+    NIX_PYTHONPATH=.:${python3-omogenjudge-env}/lib/python3.10/site-packages \
+    PYTHONNOUSERSITE=true ${django}/bin/django-admin "$@"
+  '';
 
   frontend_assets = pkgs.buildNpmPackage {
     pname = "omogenjudge";
@@ -71,8 +93,7 @@ let
     name = "omogenjudge-web-static";
     # Skip the nix/ directory
     src = builtins.filterSource (path: type: baseNameOf path != "nix") ./..;
-    nativeBuildInputs =
-      [ pkgs.bash pkgs.nodejs_18 python3-omogenjudge ];
+    nativeBuildInputs = [ pkgs.bash pkgs.nodejs_18 python3-omogenjudge-env ];
     buildPhase = ''
       set -v
       patchShebangs .
@@ -142,21 +163,22 @@ let
   omogenjudge-host-and-queue = pkgs.runCommand "omogenjudge-host-and-queue" {
     nativeBuildInputs = [ pkgs.dpkg ];
   } ''
-      mkdir host queue
-      dpkg-deb -R ${omogenjudge-host-deb} host
-      dpkg-deb -R ${omogenjudge-queue-deb} queue
+    mkdir host queue
+    dpkg-deb -R ${omogenjudge-host-deb} host
+    dpkg-deb -R ${omogenjudge-queue-deb} queue
 
-      mkdir $out
-      install -m 544 host/usr/bin/omogenjudge-host $out
-      install -m 644 host/etc/systemd/system/omogenjudge-host.service $out
-      install -m 644 host/etc/omogen/judgehost.toml $out
+    mkdir $out
+    install -m 544 host/usr/bin/omogenjudge-host $out
+    install -m 644 host/etc/systemd/system/omogenjudge-host.service $out
+    install -m 644 host/etc/omogen/judgehost.toml $out
 
-      install -m 544 queue/usr/bin/omogenjudge-queue $out
-      install -m 644 queue/etc/systemd/system/omogenjudge-queue.service $out
-      install -m 644 queue/etc/omogen/queue.toml $out
+    install -m 544 queue/usr/bin/omogenjudge-queue $out
+    install -m 644 queue/etc/systemd/system/omogenjudge-queue.service $out
+    install -m 644 queue/etc/omogen/queue.toml $out
   '';
 
 in {
-  inherit python3-omogenjudge frontend_assets omogenjudge-web-static
-    omogenjudge-host-and-queue omogenjudge-impure-bazel-build;
+  inherit python3-omogenjudge-application python3-omogenjudge-env django-admin
+    frontend_assets omogenjudge-web-static omogenjudge-host-and-queue
+    omogenjudge-impure-bazel-build test-thingy;
 }
