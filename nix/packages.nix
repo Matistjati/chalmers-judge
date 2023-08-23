@@ -1,6 +1,6 @@
 { lib, pkgs }:
 let
-  python3-omogenjudge = pkgs.poetry2nix.mkPoetryEnv {
+  python3-omogenjudge = pkgs.poetry2nix.mkPoetryApplication {
     # Skip the nix/ directory
     projectDir =
       builtins.filterSource (path: type: baseNameOf path != "nix") ./..;
