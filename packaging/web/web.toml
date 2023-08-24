@@ -1,9 +1,12 @@
 [web]
-secret_key='default very insecure key!'
+secret_key = 'default very insecure key!'
 
 [database]
-password='omogenjudge'
+password = 'omogenjudge'
 
 [email]
-mailjet_api_key='fill in api key'
-mailjet_api_secret='fill in api secret'
+mailjet_api_key = 'fill in api key'
+mailjet_api_secret = 'fill in api secret'
+
+[staticfiles]
+dir = '<missing>'

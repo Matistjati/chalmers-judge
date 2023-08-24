@@ -17,7 +17,7 @@
           config.allowUnfree = false;
         };
 
-        pkgsOmogen = import ./nix/packages.nix { inherit lib pkgs; };
+        packages = import ./nix/packages.nix { inherit lib pkgs; };
 
       in {
         devShell = pkgs.mkShell {
@@ -25,13 +25,17 @@
         };
 
         # To run in qemu-kvm
-        packages = pkgsOmogen // {
+        packages = packages.pkgsOmogen // {
           monolith-vm = nixos-generators.nixosGenerate {
             inherit system;
             modules = [
-              { nixpkgs.overlays = [ (final: prev: { inherit pkgsOmogen; }) ]; }
+              {
+                nixpkgs.overlays =
+                  [ (final: prev: { inherit (packages) pkgsOmogen; }) ];
+              }
               ./nix/monolith-vm.nix
             ];
+            specialArgs.omogen-python-deps = packages.omogen-python-deps;
             format = "vm-nogui";
           };
         };

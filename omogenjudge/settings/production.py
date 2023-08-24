@@ -32,7 +32,7 @@ DATABASES = {
     }
 }
 STATICFILES_DIRS = [
-    BASE_DIR.parent / "output" / "frontend_assets",
+    config['staticfiles']['dir']
 ]
 
 if "oauth" in config:

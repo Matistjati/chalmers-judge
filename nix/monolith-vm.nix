@@ -1,4 +1,4 @@
-{ lib, pkgs, ... }:
+{ lib, pkgs, omogen-python-deps, ... }:
 let
   cfg = {
     statedir = "/var/lib/omogen";
@@ -6,13 +6,11 @@ let
     group = "omogen";
     uwsgi-socket = "127.0.0.1:62542";
   };
-  pythondir =
-    "${pkgs.pkgsOmogen.python3-omogenjudge-application}/lib/python3.10/site-packages";
 in {
   users.users = {
     root = {
       password = " ";
-      packages = [ pkgs.pkgsOmogen.python3-omogenjudge-env ];
+      packages = [ pkgs.pkgsOmogen.django-admin ];
     };
     omogen-web = {
       isSystemUser = true;
@@ -31,14 +29,17 @@ in {
   environment.etc = {
     "omogen/web.toml".text = ''
       [web]
-      secret_key='default very insecure key!'
+      secret_key = 'default very insecure key!'
 
       [database]
-      password='omogenjudge'
+      password = 'omogenjudge'
 
       [email]
-      mailjet_api_key='fill in api key'
-      mailjet_api_secret='fill in api secret'
+      mailjet_api_key = 'fill in api key'
+      mailjet_api_secret = 'fill in api secret'
+
+      [staticfiles]
+      dir = '${pkgs.pkgsOmogen.omogenjudge-web-static}'
     '';
     "nginx/uwsgi_params".text = ''
       uwsgi_param QUERY_STRING $query_string;
@@ -82,9 +83,7 @@ in {
       workers = 2;
       socket = cfg.uwsgi-socket;
       module = "omogenjudge.wsgi";
-      chdir = pythondir;
-      pythonPackages = self:
-        pkgs.pkgsOmogen.python3-omogenjudge-application.propagatedBuildInputs;
+      pythonPackages = self: omogen-python-deps;
     };
   };
 
@@ -142,18 +141,21 @@ in {
   systemd.services."migrate-db" = {
     enable = true;
     script = ''
-      # Sleep to allow DB startup
+      # Sleep to allow the started pg process to initialize.
       sleep 3
 
-      cd ${pythondir}
-      DJANGO_SETTINGS_MODULE=omogenjudge.settings \
-      PRODUCTION=1 \
       ${pkgs.pkgsOmogen.django-admin}/bin/django-admin migrate
     '';
+
+    requires = [ "postgresql.service" ];
+    after = [ "postgresql.service" ];
+
+    requiredBy = [ "uwsgi.service" ];
     wantedBy = [ "uwsgi.service" ];
+    before = [ "uwsgi.service" ];
+
     serviceConfig = { User = "root"; };
   };
-  systemd.units."postgresql.service".wantedBy = [ "migrate-db.service" ];
 
   system.stateVersion = "23.11";
 }

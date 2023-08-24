@@ -36,26 +36,29 @@ let
       });
     });
   };
-  python3-omogenjudge-application =
+  omogen-python-app =
     pkgs.poetry2nix.mkPoetryApplication python3-omogenjudge-attrset;
-  python3-omogenjudge-env =
-    pkgs.poetry2nix.mkPoetryEnv python3-omogenjudge-attrset;
-  python3-omogenjudge-deps = (pkgs.poetry2nix.mkPoetryPackages
-    python3-omogenjudge-attrset).poetryPackages;
-  test-thingy = pkgs.poetry2nix.mkPoetryEnv (python3-omogenjudge-attrset // {
-    extraPackages = _: [ python3-omogenjudge-application ];
-  });
+
+  omogen-python-packages =
+    pkgs.poetry2nix.mkPoetryPackages python3-omogenjudge-attrset;
+  omogen-python-deps = omogen-python-packages.poetryPackages
+    ++ [ omogen-python-app ];
+  omogen-python = omogen-python-packages.python;
+
+  omogen-python-env = omogen-python.withPackages (_: omogen-python-deps);
 
   # This is a weird workaround around poetry2nix being weird (not supporting running script from a
   # dependency in the library context of the project).
   django-admin = let
     find-django =
       lib.lists.findFirst (drv: drv.pname == "django") (throw "missing django");
-    django = find-django python3-omogenjudge-deps;
+    django = find-django omogen-python-deps;
   in pkgs.writeShellScriptBin "django-admin" ''
-    NIX_PYTHONPREFIX=${python3-omogenjudge-env} \
-    NIX_PYTHONEXECUTABLE=${python3-omogenjudge-env}/bin/python3.10 \
-    NIX_PYTHONPATH=.:${python3-omogenjudge-env}/lib/python3.10/site-packages \
+    DJANGO_SETTINGS_MODULE=omogenjudge.settings \
+    PRODUCTION=1 \
+    NIX_PYTHONPREFIX=${omogen-python-env} \
+    NIX_PYTHONEXECUTABLE=${omogen-python-env}/bin/python3.10 \
+    NIX_PYTHONPATH=:${omogen-python-env}/lib/python3.10/site-packages \
     PYTHONNOUSERSITE=true ${django}/bin/django-admin "$@"
   '';
 
@@ -87,13 +90,16 @@ let
 
     [database]
     password = "password placeholder"
+
+    [staticfiles]
+    dir = "${frontend_assets}"
   '';
 
   omogenjudge-web-static = pkgs.stdenv.mkDerivation {
     name = "omogenjudge-web-static";
     # Skip the nix/ directory
     src = builtins.filterSource (path: type: baseNameOf path != "nix") ./..;
-    nativeBuildInputs = [ pkgs.bash pkgs.nodejs_18 python3-omogenjudge-env ];
+    nativeBuildInputs = [ pkgs.bash pkgs.nodejs_18 omogen-python-env ];
     buildPhase = ''
       set -v
       patchShebangs .
@@ -178,7 +184,10 @@ let
   '';
 
 in {
-  inherit python3-omogenjudge-application python3-omogenjudge-env django-admin
-    frontend_assets omogenjudge-web-static omogenjudge-host-and-queue
-    omogenjudge-impure-bazel-build test-thingy;
+  pkgsOmogen = {
+    inherit omogen-python-app omogen-python omogen-python-env django-admin
+      frontend_assets omogenjudge-web-static omogenjudge-host-and-queue
+      omogenjudge-impure-bazel-build;
+  };
+  inherit omogen-python-deps;
 }
