@@ -1,7 +1,7 @@
-{ lib, pkgs, omogen-python-deps, ... }:
+{ config, lib, pkgs, omogen-python-deps, ... }:
 let
   cfg = {
-    statedir = "/var/lib/omogen";
+    var-lib-omogen = "/var/lib/omogen";
     userweb = "omogen-web";
     group = "omogen";
     uwsgi-socket = "127.0.0.1:62542";
@@ -19,12 +19,6 @@ in {
   };
   users.groups.${cfg.group} = { };
   users.mutableUsers = false;
-
-  system.activationScripts.makeWebStateDir = ''
-    mkdir -p ${cfg.statedir}
-    chown omogen-web:omogen ${cfg.statedir}
-    chmod 644 ${cfg.statedir}
-  '';
 
   environment.etc = {
     "omogen/web.toml".text = ''
@@ -57,20 +51,6 @@ in {
       uwsgi_param SERVER_NAME $server_name;
     '';
   };
-
-  virtualisation.forwardPorts = [
-    {
-      from = "host";
-      host.port = 8080;
-      guest.port = 80;
-    }
-    {
-      from = "host";
-      host.port = 8443;
-      guest.port = 443;
-    }
-  ];
-  networking.firewall.allowedTCPPorts = [ 80 443 ];
 
   services.uwsgi = {
     enable = true;
@@ -156,6 +136,48 @@ in {
 
     serviceConfig = { User = "root"; };
   };
+
+  fileSystems."/".fsType = "tmpfs";
+
+  virtualisation = let
+    sharedDirectories = {
+      "/var/lib/postgresql" = "db";
+      "/var/lib/acme" = "certificates";
+      "${cfg.var-lib-omogen}" = "problems";
+    };
+    virtfs = device:
+      ''-virtfs local,path="$OMOGEN"/${device},''
+      + "security_model=mapped-file,mount_tag=${device}";
+  in {
+    # Mount in launch script
+    qemu.options = lib.attrsets.mapAttrsToList (_: virtfs) sharedDirectories;
+
+    # Mount within VM
+    fileSystems = builtins.mapAttrs (_: device: {
+      inherit device;
+      fsType = "9p";
+      neededForBoot = true;
+      options = [
+        "trans=virtio"
+        "version=9p2000.L"
+        "msize=${toString config.virtualisation.msize}"
+      ];
+    }) sharedDirectories;
+
+    forwardPorts = [
+      {
+        from = "host";
+        host.port = 8080;
+        guest.port = 80;
+      }
+      {
+        from = "host";
+        host.port = 8443;
+        guest.port = 443;
+      }
+    ];
+  };
+  networking.firewall.allowedTCPPorts = [ 80 443 ];
 
   system.stateVersion = "23.11";
 }

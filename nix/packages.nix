@@ -2,8 +2,9 @@
 let
   python3-omogenjudge-attrset = {
     # Skip the nix/ directory
-    projectDir =
-      builtins.filterSource (path: type: baseNameOf path != "nix") ./..;
+    projectDir = builtins.filterSource
+      (path: type: baseNameOf path != "nix" && baseNameOf path != "flake.nix")
+      ./..;
 
     overrides = pkgs.poetry2nix.defaultPoetryOverrides.extend (final: prev: {
       mailjet-rest = prev.mailjet-rest.overridePythonAttrs (old: {
@@ -98,7 +99,9 @@ let
   omogenjudge-web-static = pkgs.stdenv.mkDerivation {
     name = "omogenjudge-web-static";
     # Skip the nix/ directory
-    src = builtins.filterSource (path: type: baseNameOf path != "nix") ./..;
+    src = builtins.filterSource
+      (path: type: baseNameOf path != "nix" && baseNameOf path != "flake.nix")
+      ./..;
     nativeBuildInputs = [ pkgs.bash pkgs.nodejs_18 omogen-python-env ];
     buildPhase = ''
       set -v

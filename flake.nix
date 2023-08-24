@@ -19,6 +19,19 @@
 
         packages = import ./nix/packages.nix { inherit lib pkgs; };
 
+        monolith-vm = nixos-generators.nixosGenerate {
+          inherit system;
+          modules = [
+            {
+              nixpkgs.overlays =
+                [ (final: prev: { inherit (packages) pkgsOmogen; }) ];
+            }
+            ./nix/monolith-vm.nix
+          ];
+          specialArgs.omogen-python-deps = packages.omogen-python-deps;
+          format = "vm-nogui";
+        };
+
       in {
         devShell = pkgs.mkShell {
           nativeBuildInputs = let p = pkgs; in [ p.bashInteractive ];
@@ -26,18 +39,13 @@
 
         # To run in qemu-kvm
         packages = packages.pkgsOmogen // {
-          monolith-vm = nixos-generators.nixosGenerate {
-            inherit system;
-            modules = [
-              {
-                nixpkgs.overlays =
-                  [ (final: prev: { inherit (packages) pkgsOmogen; }) ];
-              }
-              ./nix/monolith-vm.nix
-            ];
-            specialArgs.omogen-python-deps = packages.omogen-python-deps;
-            format = "vm-nogui";
-          };
+          inherit monolith-vm;
+          default = pkgs.writeShellScriptBin "run-nixos-vm" ''
+            export OMOGEN="''${OMOGEN:-$(pwd)}"
+            echo "Omogen dir: $OMOGEN"
+            mkdir -p "$OMOGEN/certificates" "$OMOGEN/db" "$OMOGEN/problems"
+            ${monolith-vm}/bin/run-nixos-vm
+          '';
         };
       });
 }
