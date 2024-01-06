@@ -5,6 +5,7 @@ import tempfile
 import zipfile
 from typing import Optional
 
+import argparse
 import problemtools.run
 from django.db import transaction
 from problemtools import problem2html
@@ -189,16 +190,21 @@ def _add_statement(problem: ToolsProblem, language_code: str, db_problem: Proble
         problem=db_problem,
         title=problem.config.get('name')[language_code]
     )
-    htmlopt = problem2html.ConvertOptions()
+
     with tempfile.TemporaryDirectory() as tmp_dest:
-        htmlopt.destdir = tmp_dest
-        htmlopt.quiet = True
-        htmlopt.language = language_code
-        htmlopt.bodyonly = True
-        htmlopt.css = False
-        htmlopt.headers = False
-        htmlopt.imgbasedir = f"/problems/{problem.shortname}/img/{language_code}"
-        problem2html.convert(problem.probdir, htmlopt)
+        #args.imgbasedir = f"/problems/{problem.shortname}/img/{language_code}"
+        arglist = [
+            f"dest-dir={tmp_dest}",
+            "quiet",
+            f"language={language_code}",
+            "body-only",
+            "no-css",
+            "headers"
+        ]
+        args = [f"--{i}" for i in arglist]
+        args.insert(0, problem.probdir)
+        problem2html.convert(args)
+
         with open(os.path.join(tmp_dest, 'index.html'), 'r') as html:
             statement.html = html.read()
         statement.save()
@@ -222,7 +228,7 @@ def _add_statements(problem: ToolsProblem, db_problem: Problem):
     statement = problem.statement
     for lang in statement.languages:
         _add_statement(problem, lang, db_problem)
-    for attachment_path in problem.attachments.get_attachment_paths():
+    for attachment_path in problem.attachments.attachments:
         with open(attachment_path, 'rb') as attachment:
             ProblemStatementFile(
                 problem=db_problem,
