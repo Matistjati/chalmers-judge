@@ -27,11 +27,11 @@
                 <table class="table" style="vertical-align: middle">
                     <thead>
                     <tr class="align-middle">
-                        {% if contest_started %}
+                        {% if contest_started or user.is_superuser %}
                             <th style="width: 2em">Rank</th>
                         {% endif %}
                         <th>Team</th>
-                        {% if contest_started %}
+                        {% if contest_started or user.is_superuser %}
                             {% for cproblem in scoreboard.problems %}
                                 {% if cproblem.label %}
                                     <th style="width: 2em" class="text-center">
@@ -83,7 +83,7 @@
                                 class="bg-primary bg-opacity-10"
                                 {% endif %}
                         >
-                            {% if contest_started %}
+                            {% if contest_started or user.is_superuser %}
                                 <td class="text-center">
                                     {% if team.rank %}
                                         {{ team.rank }}
@@ -106,7 +106,7 @@
                                     </span>
                                 {% endif %}
                             </td>
-                            {% if contest_started %}
+                            {% if contest_started or user.is_superuser %}
                                 {% for res in team.results %}
                                     {% set scoreboard_problem = scoreboard.scoreboard_problems[loop.index0] %}
                                     {% set is_scoring = scoreboard_problem.max_score > 0 %}
