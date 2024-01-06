@@ -34,7 +34,7 @@ class Command(BaseCommand):
                 except omogenjudge.storage.models.Problem.DoesNotExist:
                     update_existing = False
 
-                num_errors, num_warnings = problem.check(problemtools.verifyproblem.default_args())
+                num_errors, num_warnings = problem.check(problemtools.verifyproblem.argparser().parse_args([None]))
                 if num_errors:
                     logger.error("Problem has errors: exiting")
                     sys.exit(1)
