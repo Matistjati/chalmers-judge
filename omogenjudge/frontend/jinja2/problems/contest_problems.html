@@ -28,6 +28,7 @@
                 {% endif %}
             </tr>
             </thead>
+            {% if contest_problems or user.is_superuser %}
             {% for scoreboard_problem in scoreboard.scoreboard_problems %}
             {% set team_problem_res = None %}
             {% if team_results %}
@@ -78,6 +79,7 @@
                 </td>
                 <td class="border-0"></td>
             </tr>
+            {% endif %}
             {% endif %}
         </table>
     </div>

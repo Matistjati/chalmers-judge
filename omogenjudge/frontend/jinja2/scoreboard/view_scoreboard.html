@@ -16,140 +16,144 @@
             <div class="text-center">
                 {{ util.countdown() }}
             </div>
+            
+            {% if contest.public_scoreboard or contest_ended or user.is_superuser %}
+                {% if user.is_authenticated and user.account_id in scoreboard.user_to_rank %}
+                    <a href="#rank-{{ scoreboard.user_to_rank[user.account_id] }}" class="btn btn-outline-primary">
+                        Skip to your team (rank {{ scoreboard.user_to_rank[user.account_id] + 1 }})
+                    </a>
+                {% endif %}
 
-            {% if user.is_authenticated and user.account_id in scoreboard.user_to_rank %}
-                <a href="#rank-{{ scoreboard.user_to_rank[user.account_id] }}" class="btn btn-outline-primary">
-                    Skip to your team (rank {{ scoreboard.user_to_rank[user.account_id] + 1 }})
-                </a>
-            {% endif %}
-
-            <table class="table" style="vertical-align: middle">
-                <thead>
-                <tr class="align-middle">
-                    {% if contest_started %}
-                        <th style="width: 2em">Rank</th>
-                    {% endif %}
-                    <th>Team</th>
-                    {% if contest_started %}
-                        {% for cproblem in scoreboard.problems %}
-                            {% if cproblem.label %}
-                                <th style="width: 2em" class="text-center">
-                                    <a href="{{ contest_url('problem', cproblem.problem.short_name) }}">
-                                        <span class="badge me-1 bg-primary"
-                                              data-bs-toggle="tooltip" data-bs-placement="top"
-                                              title="{{ problemhelpers.problem_title(cproblem.problem) }}"
-                                              style="font-size: 0.9rem">
-                                            {{ cproblem.label }}
-                                        </span>
-                                    </a>
-                                </th>
-                            {% else %}
-                                <th style="max-width: 7em; width: 7em" class="ps-1 pe-1">
-                                    <a href="{{ contest_url('problem', cproblem.problem.short_name) }}">
-                                        <span class="badge bg-primary fw-normal text-center overflow-hidden"
-                                              data-bs-toggle="tooltip" data-bs-placement="top"
-                                              title="{{ problemhelpers.problem_title(cproblem.problem) }}"
-                                              style="font-size: 0.8rem; width: 7em; text-overflow: ellipsis">
-                                            {{ cproblem.problem.short_name }}
-                                        </span>
-                                    </a>
-                                </th>
-                            {% endif %}
-                        {% endfor %}
-                        <th class="text-center" style="width: 5em">Score</th>
-                        {% if scoreboard.has_penalty %}
-                            <th class="text-center" style="width: 4em"
-                                    {% if contest.scoring_type == 'scoring' %}
-                                data-bs-toggle="tooltip" data-bs-placement="right"
-                                title="The time of the last submission that increased a participant's score (minute granularity)"
-                                    {% endif %}
-                            >Tiebreak
-                            </th>
-                        {% endif %}
-                    {% endif %}
-                </tr>
-                </thead>
-                {% set sc = namespace(upsolving_section = False, has_regular_team = False) %}
-                {% for team in scoreboard.scoreboard_teams %}
-                    {% set sc.has_regular_team = sc.has_regular_team or team.rank %}
-                    {% if sc.has_regular_team and not sc.upsolving_section and not team.rank %}
-                        <tr class="bg-opacity-10 bg-dark"><td colspan="1000"></td></tr>
-                    {% endif %}
-                    {% set sc.upsolving_section = not team.rank %}
-                    <tr
-                            id="rank-{{ loop.index0 }}"
-                            {% if user.is_authenticated and loop.index0 == scoreboard.user_to_rank[user.account_id] %}
-                            class="bg-primary bg-opacity-10"
-                            {% endif %}
-                    >
+                <table class="table" style="vertical-align: middle">
+                    <thead>
+                    <tr class="align-middle">
                         {% if contest_started %}
-                            <td class="text-center">
-                                {% if team.rank %}
-                                    {{ team.rank }}
+                            <th style="width: 2em">Rank</th>
+                        {% endif %}
+                        <th>Team</th>
+                        {% if contest_started %}
+                            {% for cproblem in scoreboard.problems %}
+                                {% if cproblem.label %}
+                                    <th style="width: 2em" class="text-center">
+                                        <a href="{{ contest_url('problem', cproblem.problem.short_name) }}">
+                                            <span class="badge me-1 bg-primary"
+                                                data-bs-toggle="tooltip" data-bs-placement="top"
+                                                title="{{ problemhelpers.problem_title(cproblem.problem) }}"
+                                                style="font-size: 0.9rem">
+                                                {{ cproblem.label }}
+                                            </span>
+                                        </a>
+                                    </th>
                                 {% else %}
-                                <span class="badge rounded-pill bg-secondary" style="vertical-align: middle">
-                                    upsolved
-                                </span>
+                                    <th style="max-width: 7em; width: 7em" class="ps-1 pe-1">
+                                        <a href="{{ contest_url('problem', cproblem.problem.short_name) }}">
+                                            <span class="badge bg-primary fw-normal text-center overflow-hidden"
+                                                data-bs-toggle="tooltip" data-bs-placement="top"
+                                                title="{{ problemhelpers.problem_title(cproblem.problem) }}"
+                                                style="font-size: 0.8rem; width: 7em; text-overflow: ellipsis">
+                                                {{ cproblem.problem.short_name }}
+                                            </span>
+                                        </a>
+                                    </th>
                                 {% endif %}
-                            </td>
-                        {% endif %}
-                        <td>
-                            {{ team.team.display_name() }}
-                            {% if team.virtual %}
-                                <span class="badge rounded-pill bg-info ms-1" style="vertical-align: middle">
-                                    {% if team.virtual_time %}
-                                        {{ team.virtual_time | format_timedelta }}
-                                    {% else %}
-                                        virtual
-                                    {% endif %}
-                                </span>
-                            {% endif %}
-                        </td>
-                        {% if contest_started %}
-                            {% for res in team.results %}
-                                {% set scoreboard_problem = scoreboard.scoreboard_problems[loop.index0] %}
-                                {% set is_scoring = scoreboard_problem.max_score > 0 %}
-                                <td class="text-center">
-                                    {% if is_scoring %}
-                                        {% if res.tries == 0 %}
-                                        {% else %}
-                                            {{ formatting.format_score(res.problem_score) }}
-                                            {{ submissionhelpers.subtask_bubbles(res.subtask_scores, scoreboard_problem.subtask_scores) }}
-                                        {% endif %}
-                                    {% else %}
-                                        {% if res.problem_score > 0 %}
-                                            <span class="text-success">
-                                            +{{ res.tries }}
-                                            <div style="font-size: 0.7rem">
-                                                {{ scoreboard.format_tiebreak(res.tiebreak) }}
-                                            </div>
-                                        </span>
-                                        {% elif res.pending %}
-                                            {% if res.tries %}
-                                                <span style="color: var(--bs-purple)">-{{ res.tries }}?</span>
-                                            {% else %}
-                                                <span style="color: var(--bs-purple)">?</span>
-                                            {% endif %}
-                                        {% elif res.tries %}
-                                            <span class="text-danger">-{{ res.tries }}</span>
-                                        {% else %}
-                                            .
-                                        {% endif %}
-                                    {% endif %}
-                                </td>
                             {% endfor %}
-                            <td class="text-center">{{ formatting.format_score(team.total_score) }}</td>
+                            <th class="text-center" style="width: 5em">Score</th>
                             {% if scoreboard.has_penalty %}
-                                <td class="text-center">
-                                    {% if team.virtual or (contest.start_time and not team.practice) %}
-                                    {{ scoreboard.format_tiebreak(team.tiebreak) }}
-                                    {% endif %}
-                                </td>
+                                <th class="text-center" style="width: 4em"
+                                        {% if contest.scoring_type == 'scoring' %}
+                                    data-bs-toggle="tooltip" data-bs-placement="right"
+                                    title="The time of the last submission that increased a participant's score (minute granularity)"
+                                        {% endif %}
+                                >Tiebreak
+                                </th>
                             {% endif %}
                         {% endif %}
                     </tr>
-                {% endfor %}
-            </table>
+                    </thead>
+                    {% set sc = namespace(upsolving_section = False, has_regular_team = False) %}
+                    {% for team in scoreboard.scoreboard_teams %}
+                        {% set sc.has_regular_team = sc.has_regular_team or team.rank %}
+                        {% if sc.has_regular_team and not sc.upsolving_section and not team.rank %}
+                            <tr class="bg-opacity-10 bg-dark"><td colspan="1000"></td></tr>
+                        {% endif %}
+                        {% set sc.upsolving_section = not team.rank %}
+                        <tr
+                                id="rank-{{ loop.index0 }}"
+                                {% if user.is_authenticated and loop.index0 == scoreboard.user_to_rank[user.account_id] %}
+                                class="bg-primary bg-opacity-10"
+                                {% endif %}
+                        >
+                            {% if contest_started %}
+                                <td class="text-center">
+                                    {% if team.rank %}
+                                        {{ team.rank }}
+                                    {% else %}
+                                    <span class="badge rounded-pill bg-secondary" style="vertical-align: middle">
+                                        upsolved
+                                    </span>
+                                    {% endif %}
+                                </td>
+                            {% endif %}
+                            <td>
+                                {{ team.team.display_name() }}
+                                {% if team.virtual %}
+                                    <span class="badge rounded-pill bg-info ms-1" style="vertical-align: middle">
+                                        {% if team.virtual_time %}
+                                            {{ team.virtual_time | format_timedelta }}
+                                        {% else %}
+                                            virtual
+                                        {% endif %}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            {% if contest_started %}
+                                {% for res in team.results %}
+                                    {% set scoreboard_problem = scoreboard.scoreboard_problems[loop.index0] %}
+                                    {% set is_scoring = scoreboard_problem.max_score > 0 %}
+                                    <td class="text-center">
+                                        {% if is_scoring %}
+                                            {% if res.tries == 0 %}
+                                            {% else %}
+                                                {{ formatting.format_score(res.problem_score) }}
+                                                {{ submissionhelpers.subtask_bubbles(res.subtask_scores, scoreboard_problem.subtask_scores) }}
+                                            {% endif %}
+                                        {% else %}
+                                            {% if res.problem_score > 0 %}
+                                                <span class="text-success">
+                                                +{{ res.tries }}
+                                                <div style="font-size: 0.7rem">
+                                                    {{ scoreboard.format_tiebreak(res.tiebreak) }}
+                                                </div>
+                                            </span>
+                                            {% elif res.pending %}
+                                                {% if res.tries %}
+                                                    <span style="color: var(--bs-purple)">-{{ res.tries }}?</span>
+                                                {% else %}
+                                                    <span style="color: var(--bs-purple)">?</span>
+                                                {% endif %}
+                                            {% elif res.tries %}
+                                                <span class="text-danger">-{{ res.tries }}</span>
+                                            {% else %}
+                                                .
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                                <td class="text-center">{{ formatting.format_score(team.total_score) }}</td>
+                                {% if scoreboard.has_penalty %}
+                                    <td class="text-center">
+                                        {% if team.virtual or (contest.start_time and not team.practice) %}
+                                        {{ scoreboard.format_tiebreak(team.tiebreak) }}
+                                        {% endif %}
+                                    </td>
+                                {% endif %}
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                </table>
+            {% else %}
+            <h2 class="text-center">Scoreboard is hidden until contest is over</h1>
+            {% endif %}
         </div>
     </div>
 {% endblock %}

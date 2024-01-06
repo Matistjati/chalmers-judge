@@ -45,6 +45,7 @@ def contest_context(request: OmogenRequest) -> dict[str, typing.Any]:
             'contest': contest,
             'all_contest_problems': SimpleLazyObject(lambda: contest_problems(contest)),
             'contest_team': request.team,
+            'user': request.user,
             'contest_started': contest_has_started_for_team(contest, request.team),
             'contest_ended': contest_has_ended_for_team(contest, request.team),
         }

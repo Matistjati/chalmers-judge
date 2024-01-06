@@ -7,7 +7,8 @@ export type Context = {
     contest_start_timestamp?: number;
     contest_duration: number;
     contest_started: boolean;
-    contest_ended: boolean
+    contest_ended: boolean;
+    flexible_start_window_end_time?: number;
     only_virtual: boolean;
 };
 
