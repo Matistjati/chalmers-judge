@@ -29,7 +29,8 @@ def js_context(request: OmogenRequest) -> Dict[str, str]:
                     contest_duration=int(contest.duration.total_seconds()),
                     contest_started=contest_has_started_for_team(contest, team),
                     contest_ended=contest_has_ended_for_team(contest, team),
-                    flexible_start_window_end_time=int(contest.flexible_start_window_end_time.timestamp()),
+                    flexible_start_window_end_time=int(contest.flexible_start_window_end_time.timestamp()) if
+                        contest.flexible_start_window_end_time else None,
                     only_virtual=contest.only_virtual_contest
                 ))),
         }
