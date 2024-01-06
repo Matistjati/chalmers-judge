@@ -60,7 +60,7 @@ class Contest(models.Model):
     def open_for_practice(self):
         if self.only_virtual_contest:
             return True
-        if self.flexible_start_window_end_time and self.flexible_start_window_end_time <= timezone.now():
+        if self.flexible_start_window_end_time and timezone.now() > self.flexible_start_window_end_time:
             return True
         return self.has_ended
 
