@@ -7,7 +7,7 @@ from omogenjudge.storage.models import Contest, Team
 
 def contest_start_for_team(contest: Contest, team: typing.Optional[Team]) -> typing.Optional[int]:
     if contest.flexible_start_window_end_time:
-        return team.contest_start_time.timestamp() if team else None
+        return team.contest_start_time.timestamp() if (team and team.contest_start_time) else None
     if team and team.contest_start_time:
         return int(team.contest_start_time.timestamp())
     return int(contest.start_time.timestamp()) if contest.start_time else None
