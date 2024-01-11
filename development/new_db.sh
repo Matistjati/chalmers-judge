@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -e
+set -v
 
 sudo service omogenjudge-queue stop || true
 sudo service omogenjudge-host stop || true

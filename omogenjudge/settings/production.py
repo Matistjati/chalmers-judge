@@ -1,8 +1,10 @@
 from omogenjudge.settings.base import *  # noqa
 
 import toml
+import os
 
-with open("/etc/omogen/web.toml", "r") as f:
+CONFIG_FILE_PATH = os.environ.get("OMOGEN_CONFIG_FILE_PATH") or "/etc/omogen/web.toml"
+with open(CONFIG_FILE_PATH, "r") as f:
     config = toml.load(f)
 
 DEBUG=True
@@ -14,8 +16,8 @@ MAILJET_API_SECRET = config['email']['mailjet_api_secret']
 
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
-SECURE_HSTS_SECONDS = 31536000
-SECURE_SSL_REDIRECT = True
+#SECURE_HSTS_SECONDS = 31536000
+#SECURE_SSL_REDIRECT = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -29,6 +31,9 @@ DATABASES = {
         'PORT': '5432',
     }
 }
+STATICFILES_DIRS = [
+    config['staticfiles']['dir']
+]
 
 if "oauth" in config:
     OAUTH_DETAILS = config["oauth"]
