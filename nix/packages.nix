@@ -25,6 +25,14 @@ let
           ++ [ prev.setuptools pkgs.gmp pkgs.boost ];
         nativeBuildInputs = (old.nativeBuildInputs or [ ])
           ++ [ pkgs.automake pkgs.autoconf ];
+        postFixup = ''
+          substituteInPlace $out/lib/python3*/site-packages/problemtools/config/languages.yaml \
+            --replace '/usr/bin/gcc ' '${lib.meta.getExe pkgs.gcc} ' \
+            --replace '/usr/bin/g++ ' '${lib.meta.getExe' pkgs.gcc "g++"} ' \
+            --replace '/usr/bin/python3 ' '${lib.meta.getExe pkgs.pypy3} ' \
+            --replace '/usr/bin/rustc ' '${lib.meta.getExe pkgs.rustc} ' \
+            --replace '-static ' "" \
+        '';
       });
 
       cryptography = prev.cryptography.overridePythonAttrs (old: {
