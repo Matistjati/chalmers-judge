@@ -195,6 +195,7 @@ def _add_statement(problem: ToolsProblem, language_code: str, db_problem: Proble
         args = argparse.Namespace()
         args.destdir = tmp_dest
         args.quiet = True
+        args.tidy = True
         args.destfile = "index.html"
         args.language = language_code
         args.bodyonly = True
