@@ -192,17 +192,15 @@ def _add_statement(problem: ToolsProblem, language_code: str, db_problem: Proble
     )
 
     with tempfile.TemporaryDirectory() as tmp_dest:
-        #args.imgbasedir = f"/problems/{problem.shortname}/img/{language_code}"
-        arglist = [
-            f"dest-dir={tmp_dest}",
-            "quiet",
-            f"language={language_code}",
-            "body-only",
-            "no-css",
-            "headers"
-        ]
-        args = [f"--{i}" for i in arglist]
-        args.insert(0, problem.probdir)
+        args = argparse.Namespace()
+        args.destdir = tmp_dest
+        args.quiet = True
+        args.language = language_code
+        args.bodyonly = True
+        args.css = False
+        args.headers = False
+        args.imgbasedir = f"/problems/{problem.shortname}/img/{language_code}"
+        args.problem = problem.probdir
         problem2html.convert(args)
 
         with open(os.path.join(tmp_dest, 'index.html'), 'r') as html:
