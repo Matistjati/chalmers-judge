@@ -44,11 +44,17 @@ class LoginArgs:
 
 
 def login(request: OmogenRequest) -> HttpResponse:
+    with open("/home/webmaster/log.txt","a") as f:
+        f.write("enter")
     if request.user.is_authenticated:
         return redirect('home')
     if request.method == 'POST':
+        with open("/home/webmaster/log.txt","a") as f:
+            f.write("ispost")
         form = LoginForm(request=request, data=request.POST)
         if form.is_valid():
+            with open("/home/webmaster/log.txt","a") as f:
+                f.write("valid")
             django.contrib.auth.login(request, form.get_user())
             return redirect('/')
     else:
