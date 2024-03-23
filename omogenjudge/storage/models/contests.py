@@ -5,10 +5,9 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.functional import cached_property
 
-from omogenjudge.storage.models import Account, Problem
+from omogenjudge.storage.models import Account, Problem, Language
 from omogenjudge.util import django_fields
 from omogenjudge.util.django_fields import EnumField, StrEnum
-
 
 class ScoringType(StrEnum):
     BINARY_WITH_PENALTY = 'binary with penalty'
@@ -23,6 +22,7 @@ class Contest(models.Model):
     short_name = django_fields.TextField(unique=True)
     title = django_fields.TextField()
     host_name = django_fields.TextField(blank=True, null=True)
+    allowed_languages = models.ManyToManyField(Language, null=True)
 
     # An only virtual contest never runs as a contest, but should still have an e.g. duration because it can be done
     # virtually
