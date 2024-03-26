@@ -79,7 +79,7 @@ def language_allowed(request: OmogenRequest, language):
     if not contest:
         return True
     if contest.allow_only_python:
-        return language==Language.display(Language.PYTHON3)
+        return language==Language.PYTHON3
     return True
 
 @csrf_exempt
