@@ -43,6 +43,10 @@ class SubmitForm(forms.Form):
     
 
     def __init__(self, problem_short_name: str, allowed_languages=None, *args, **kwargs):
+        language = forms.ChoiceField(
+            label="",
+            choices=list(filter(lambda lang: allowed_languages is None or lang in allowed_languages, Language.as_choices())),
+            widget=forms.Select(attrs={'class': 'form-select'}))
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.attrs['id'] = 'submit'
@@ -53,10 +57,6 @@ class SubmitForm(forms.Form):
                 Submit('submit', 'Submit'),
             )
         )
-        language = forms.ChoiceField(
-            label="",
-            choices=list(filter(lambda lang: allowed_languages is None or lang in allowed_languages, Language.as_choices())),
-            widget=forms.Select(attrs={'class': 'form-select'}))
         self.helper.form_action = reverse_contest('submit', short_name=problem_short_name)
 
 
