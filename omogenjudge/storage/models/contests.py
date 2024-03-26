@@ -22,7 +22,7 @@ class Contest(models.Model):
     short_name = django_fields.TextField(unique=True)
     title = django_fields.TextField()
     host_name = django_fields.TextField(blank=True, null=True)
-    allowed_languages = models.ManyToManyField(Language, null=True)
+    only_allowed_language = models.ManyToManyField(Language, null=True)
 
     # An only virtual contest never runs as a contest, but should still have an e.g. duration because it can be done
     # virtually
