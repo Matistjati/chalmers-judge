@@ -15,6 +15,7 @@ from omogenjudge.storage.models.langauges import Language
 from omogenjudge.submissions.create import create_submission
 from omogenjudge.util.contest_urls import reverse_contest
 from omogenjudge.util.django_types import OmogenRequest
+from omogenjudge.storage.models import Language
 
 SOURCE_CODE_LIMIT = 200000
 
@@ -73,8 +74,13 @@ class SourceLimitCappingHandler(FileUploadHandler):
         super().__init__(*args, **kwargs)
         self.remaining = SOURCE_CODE_LIMIT
 
-def language_allowed():
-    pass
+def language_allowed(request: OmogenRequest, language):
+    contest = request.contest
+    if not contest:
+        return True
+    if contest.allow_only_python:
+        return language==Language.display(Language.PYTHON3)
+    return True
 
 @csrf_exempt
 @requires_user()
@@ -97,8 +103,8 @@ def submit(request: OmogenRequest, short_name: str, user: Account, contest: Cont
     if not form.is_valid():
         return JsonResponse({'errors': form.errors})
     language = Language(form.cleaned_data['language'])
-    #if not language_allowed(language):
-    #    return JsonResponse({'errors': {'upload_files': [f'Language not allowed.']}})
+    if not language_allowed(request, language):
+        return JsonResponse({'errors': {'upload_files': [f'Only python is allowed.']}})
     submission = create_submission(
         owner=user,
         problem=problem,
