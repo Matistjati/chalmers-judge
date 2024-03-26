@@ -12,11 +12,10 @@ from omogenjudge.frontend.submissions.view_submission import SubmissionWithSubta
 from omogenjudge.problems.lookup import NoSuchLanguage, find_statement_file, get_problem_for_view
 from omogenjudge.problems.permissions import can_view_problem
 from omogenjudge.problems.testgroups import get_submission_subtask_scores, get_subtask_scores
-from omogenjudge.storage.models import Problem, ProblemStatementFile
+from omogenjudge.storage.models import Problem, ProblemStatementFile, Language
 from omogenjudge.submissions.lookup import list_account_problem_submissions
 from omogenjudge.util.django_types import OmogenRequest
 from omogenjudge.util.templates import render_template
-
 
 @dataclasses.dataclass
 class ViewArgs:
@@ -72,7 +71,7 @@ def view_problem(request: OmogenRequest, short_name: str, language: Optional[str
         memlim_mb='{:.0f}'.format(round(problem.current_version.memory_limit_kb / 1000)),
         is_scoring=problem.current_version.scoring,
         subtask_scores=subtasks,
-        submit_form=SubmitForm(problem.short_name),
+        submit_form=SubmitForm(problem.short_name, allowed_languages=[Language.PYTHON3] if request.contest.allow_only_python else None),
         source_code_limit=SOURCE_CODE_LIMIT,
         submissions=submissions_with_subtasks,
         attachments=sorted(attachments.items(), key=lambda it: it[0]),

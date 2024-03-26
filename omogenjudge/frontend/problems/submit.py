@@ -40,12 +40,9 @@ class SubmitForm(forms.Form):
     upload_files = MultipleFileField(
         label="",
         widget=MultipleFileInput(attrs={'class': 'form-control'}))
-    language = forms.ChoiceField(
-        label="",
-        choices=Language.as_choices(),
-        widget=forms.Select(attrs={'class': 'form-select'}))
+    
 
-    def __init__(self, problem_short_name: str, *args, **kwargs):
+    def __init__(self, problem_short_name: str, allowed_languages=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.attrs['id'] = 'submit'
@@ -56,6 +53,10 @@ class SubmitForm(forms.Form):
                 Submit('submit', 'Submit'),
             )
         )
+        language = forms.ChoiceField(
+            label="",
+            choices=list(filter(lambda lang: allowed_languages is None or lang in allowed_languages, Language.as_choices())),
+            widget=forms.Select(attrs={'class': 'form-select'}))
         self.helper.form_action = reverse_contest('submit', short_name=problem_short_name)
 
 
