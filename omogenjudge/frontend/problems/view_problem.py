@@ -29,6 +29,7 @@ class ViewArgs:
     timelim_seconds: str
     timelim_ms: int
     memlim_mb: str
+    submission_sizelim_kb: str
     is_scoring: bool
     subtask_scores: List[float]
     submit_form: SubmitForm
@@ -69,9 +70,10 @@ def view_problem(request: OmogenRequest, short_name: str, language: Optional[str
         timelim_seconds=str(round(problem.current_version.time_limit_ms / 1000, ndigits=1)),
         timelim_ms=problem.current_version.time_limit_ms,
         memlim_mb='{:.0f}'.format(round(problem.current_version.memory_limit_kb / 1000)),
+        submission_sizelim_kb='{:.0f}'.format(round(problem.submission_size_limit_in_bytes / 1000)),
         is_scoring=problem.current_version.scoring,
         subtask_scores=subtasks,
-        submit_form=SubmitForm(problem.short_name, allowed_languages=[Language.PYTHON3] if request.contest.allow_only_python else None),
+        submit_form=SubmitForm(problem.short_name, allowed_languages=[Language.display(Language.PYTHON3)] if request.contest.allow_only_python else None),
         source_code_limit=SOURCE_CODE_LIMIT,
         submissions=submissions_with_subtasks,
         attachments=sorted(attachments.items(), key=lambda it: it[0]),

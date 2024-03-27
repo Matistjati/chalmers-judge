@@ -40,13 +40,13 @@ class SubmitForm(forms.Form):
     upload_files = MultipleFileField(
         label="",
         widget=MultipleFileInput(attrs={'class': 'form-control'}))
-    
+    language = forms.ChoiceField(
+        label="",
+        choices=[],  # Empty choices initially
+        widget=forms.Select(attrs={'class': 'form-select'}))
+
 
     def __init__(self, problem_short_name: str, allowed_languages=None, *args, **kwargs):
-        language = forms.ChoiceField(
-            label="",
-            choices=list(filter(lambda lang: allowed_languages is None or lang in allowed_languages, Language.as_choices())),
-            widget=forms.Select(attrs={'class': 'form-select'}))
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.attrs['id'] = 'submit'
@@ -58,6 +58,8 @@ class SubmitForm(forms.Form):
             )
         )
         self.helper.form_action = reverse_contest('submit', short_name=problem_short_name)
+
+        self.fields['language'].choices = list(filter(lambda lang: allowed_languages is None or lang[1] in allowed_languages, Language.as_choices()))
 
 
 class SourceLimitCappingHandler(FileUploadHandler):
@@ -71,9 +73,9 @@ class SourceLimitCappingHandler(FileUploadHandler):
         self.remaining -= file_size
         return None
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.remaining = SOURCE_CODE_LIMIT
+    def __init__(self, request, size_limit, *args, **kwargs):
+        super().__init__(request, *args, **kwargs)
+        self.remaining = size_limit
 
 def language_allowed(request: OmogenRequest, language):
     contest = request.contest
@@ -95,11 +97,13 @@ def submit(request: OmogenRequest, short_name: str, user: Account, contest: Cont
         raise Http404()
     if not can_submit_in_contest(contest):
         raise PermissionDenied()
-    request.upload_handlers.insert(0, SourceLimitCappingHandler(request))  # type: ignore
-    exceeded_file_size = request.META.get('upload_was_capped', False)
+    size_limit = min(SOURCE_CODE_LIMIT,problem.submission_size_limit_in_bytes)
+    request.upload_handlers.insert(0, SourceLimitCappingHandler(request, size_limit))  # type: ignore
     form = SubmitForm(problem.short_name, data=request.POST, files=request.FILES)
+    exceeded_file_size = request.META.get('upload_was_capped', False)
     if exceeded_file_size:
-        return JsonResponse({'errors': {'upload_files': [f'The source code limit is {SOURCE_CODE_LIMIT // 1000} KB.']}})
+        return JsonResponse({'errors': {'upload_files': [f'The source code limit is {size_limit // 1000} KB.']}})
+
     # Note: don't validate the rest of the form if we killed uploads
     if not form.is_valid():
         return JsonResponse({'errors': form.errors})

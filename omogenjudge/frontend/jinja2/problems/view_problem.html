@@ -110,7 +110,7 @@
             <div class="card-body">
                 <div class="alert alert-danger d-none" id="submit-errors"></div>
                 {{ crispy(submit_form) }}
-                <span class="text-muted">The source code can be at most 200 KB.</span>
+                <span class="text-muted">The source code can be at most {{ submission_sizelim_kb }} KB.</span>
             </div>
         </div>
         {% elif user.is_authenticated %}
