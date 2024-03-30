@@ -15,6 +15,7 @@ class ScoringType(StrEnum):
     LEGACY_CODEGOLF = 'legacy codegolf'
     SCORING_BY_RUNTIME = 'scoring by runtime'
     SCORING_WITH_CODEGOLF = "scoring with codegolf"
+    APRILFOOLS_24 = "April fools 2024"
 
 
 class Contest(models.Model):
@@ -65,7 +66,7 @@ class Contest(models.Model):
         return self.has_ended
 
     def is_scoring(self):
-        return ScoringType(self.scoring_type) == ScoringType.SCORING
+        return ScoringType(self.scoring_type) in [ScoringType.SCORING, ScoringType.APRILFOOLS_24] 
 
     def __str__(self):
         repr = self.title
