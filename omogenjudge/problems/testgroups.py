@@ -27,6 +27,7 @@ def get_subtask_scores(problem_version: ProblemVersion) -> List[float]:
         testgroups = problem_version.testgroups.all()
         secret_group = None
         for group in testgroups:
+            name = group.testgroup_name
             if name == "data/secret/":
                 secret_group = group
 
