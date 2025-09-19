@@ -26,7 +26,7 @@ def get_subtask_scores(problem_version: ProblemVersion) -> List[float]:
     if not subtasks:
         testgroups = problem_version.testgroups.all()
         secret_group = None
-	tried = ""
+        tried = ""
         for group in testgroups:
             name = group.testgroup_name
             tried += name

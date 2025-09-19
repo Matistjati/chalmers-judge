@@ -6,3 +6,4 @@ output
 bazel-*
 .mypy_cache
 result
+poetry.lock
