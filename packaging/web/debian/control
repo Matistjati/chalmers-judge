@@ -7,7 +7,7 @@ Standards-Version: 3.9.5
 
 Package: omogenjudge-web
 Architecture: any
-Pre-Depends: dpkg (>= 1.16.1), python3 (>= 3.10), ${misc:Pre-Depends}
+Pre-Depends: dpkg (>= 1.16.1), python3 (>= 3.12), ${misc:Pre-Depends}
 Depends: ${misc:Depends}
 Description: A short summary of what this is.
     Further indented lines can contain extra information.

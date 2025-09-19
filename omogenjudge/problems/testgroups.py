@@ -26,12 +26,14 @@ def get_subtask_scores(problem_version: ProblemVersion) -> List[float]:
     if not subtasks:
         testgroups = problem_version.testgroups.all()
         secret_group = None
+	tried = ""
         for group in testgroups:
             name = group.testgroup_name
+            tried += name
             if name == "data/secret/":
                 secret_group = group
 
-        assert secret_group, f"No secret group among {testgroups}"
+        assert secret_group, f"No secret group among {testgroups}, tried {tried=}"
         return [_none_score_to_inf(secret_group.max_score)]
         
     subtasks.sort(key=lambda key: key.testgroup_name)
