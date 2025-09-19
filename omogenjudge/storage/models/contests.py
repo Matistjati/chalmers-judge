@@ -5,10 +5,9 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.functional import cached_property
 
-from omogenjudge.storage.models import Account, Problem
+from omogenjudge.storage.models import Account, Problem, Language
 from omogenjudge.util import django_fields
 from omogenjudge.util.django_fields import EnumField, StrEnum
-
 
 class ScoringType(StrEnum):
     BINARY_WITH_PENALTY = 'binary with penalty'
@@ -16,6 +15,7 @@ class ScoringType(StrEnum):
     LEGACY_CODEGOLF = 'legacy codegolf'
     SCORING_BY_RUNTIME = 'scoring by runtime'
     SCORING_WITH_CODEGOLF = "scoring with codegolf"
+    APRILFOOLS_24 = "April fools 2024"
 
 
 class Contest(models.Model):
@@ -23,6 +23,7 @@ class Contest(models.Model):
     short_name = django_fields.TextField(unique=True)
     title = django_fields.TextField()
     host_name = django_fields.TextField(blank=True, null=True)
+    allow_only_python = models.BooleanField(default=False)
 
     # An only virtual contest never runs as a contest, but should still have an e.g. duration because it can be done
     # virtually
@@ -65,7 +66,7 @@ class Contest(models.Model):
         return self.has_ended
 
     def is_scoring(self):
-        return ScoringType(self.scoring_type) == ScoringType.SCORING
+        return ScoringType(self.scoring_type) in [ScoringType.SCORING, ScoringType.APRILFOOLS_24] 
 
     def __str__(self):
         repr = self.title

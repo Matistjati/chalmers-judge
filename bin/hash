@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -e
+
+DJANGO_SETTINGS_MODULE=omogenjudge.settings PRODUCTION=1
+poetry run python
+from django.contrib.auth.hashers import make_password
+
+raw_password = input('your_password_here')
+hashed_password = make_password(raw_password)
+
+print(hashed_password)

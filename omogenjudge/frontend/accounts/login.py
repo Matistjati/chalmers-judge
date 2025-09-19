@@ -44,6 +44,7 @@ class LoginArgs:
 
 
 def login(request: OmogenRequest) -> HttpResponse:
+    pass
     if request.user.is_authenticated:
         return redirect('home')
     if request.method == 'POST':

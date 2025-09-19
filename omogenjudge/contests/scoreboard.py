@@ -236,6 +236,61 @@ class Scoring(ScoreboardMaker):
     def has_penalty(self):
         return False
 
+class AprilFools24(Scoring):
+    def __init__(self, contest: Contest, problems: List[ContestProblem], teams: List[Team], **kwargs):
+        super(AprilFools24, self).__init__(contest, problems, teams, **kwargs)
+
+    def _process_problem(self, submissions: List[Submission], scoreboard_problem: ScoreboardProblem,
+                         start_time: Optional[datetime.datetime]) -> ProblemResult:
+        if scoreboard_problem.problem.problem.short_name != "gapastort":
+            return super()._process_problem(submissions, scoreboard_problem, start_time)
+        else:
+            problem_result = ProblemResult(
+                subtask_scores=[0] * len(scoreboard_problem.subtask_scores)
+            )
+            score_now = 0
+            for sub in submissions:
+                run = sub.current_run
+                status = Status(run.status)
+                if status in [Status.RUNNING, Status.QUEUED, Status.COMPILING]:
+                    problem_result.pending += 1
+                    continue
+                if status in [Status.JUDGE_ERROR, Status.COMPILE_ERROR]:
+                    continue
+                assert status == Status.DONE
+
+                problem_result.tries += 1
+
+                score_now = sum(problem_result.subtask_scores)
+                verdict = Verdict(run.verdict)
+                if verdict == Verdict.AC:
+                    num_bytes = 0
+                    num_a = 0
+                    for file, content in sub.submission_files['files'].items():
+                        a = base64.b64decode(content)
+                        for i in range(len(a)):
+                            if a[i]==65 or a[i]==97:
+                                num_a+=1
+
+                        num_bytes += len(a)
+
+                    problem_result.subtask_scores[0] = max(problem_result.subtask_scores[0], round(num_a/num_bytes*100, 2))
+                score_after = sum(problem_result.subtask_scores)
+
+                if start_time and score_after > score_now:
+                    problem_result.tiebreak = (sub.date_created - start_time).total_seconds() // 60
+
+            problem_result.problem_score = self._round(sum(problem_result.subtask_scores))
+            return problem_result
+
+    def _team_sort_key(self, team):
+        return -team.total_score, team.tiebreak
+
+    @property
+    def has_penalty(self):
+        return False
+
+
 class ScoringWithCodegolf(ScoreboardMaker):
     def __init__(self, contest: Contest, problems: List[ContestProblem], teams: List[Team], **kwargs):
         super(ScoringWithCodegolf, self).__init__(contest, problems, teams, tiebreak=sum, **kwargs)
@@ -477,6 +532,7 @@ _SCOREBOARDS: Dict[ScoringType, Type[ScoreboardMaker]] = {
     ScoringType.LEGACY_CODEGOLF: LegacyCodegolf,
     ScoringType.SCORING_BY_RUNTIME: ScoringByRuntime,
     ScoringType.SCORING_WITH_CODEGOLF: ScoringWithCodegolf,
+    ScoringType.APRILFOOLS_24: AprilFools24,
 }
 
 

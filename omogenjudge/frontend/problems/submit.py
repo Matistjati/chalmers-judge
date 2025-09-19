@@ -15,6 +15,7 @@ from omogenjudge.storage.models.langauges import Language
 from omogenjudge.submissions.create import create_submission
 from omogenjudge.util.contest_urls import reverse_contest
 from omogenjudge.util.django_types import OmogenRequest
+from omogenjudge.storage.models import Language
 
 SOURCE_CODE_LIMIT = 200000
 
@@ -41,10 +42,11 @@ class SubmitForm(forms.Form):
         widget=MultipleFileInput(attrs={'class': 'form-control'}))
     language = forms.ChoiceField(
         label="",
-        choices=Language.as_choices(),
+        choices=[],  # Empty choices initially
         widget=forms.Select(attrs={'class': 'form-select'}))
 
-    def __init__(self, problem_short_name: str, *args, **kwargs):
+
+    def __init__(self, problem_short_name: str, allowed_languages=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.attrs['id'] = 'submit'
@@ -56,6 +58,8 @@ class SubmitForm(forms.Form):
             )
         )
         self.helper.form_action = reverse_contest('submit', short_name=problem_short_name)
+
+        self.fields['language'].choices = list(filter(lambda lang: allowed_languages is None or lang[1] in allowed_languages, Language.as_choices()))
 
 
 class SourceLimitCappingHandler(FileUploadHandler):
@@ -69,10 +73,17 @@ class SourceLimitCappingHandler(FileUploadHandler):
         self.remaining -= file_size
         return None
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.remaining = SOURCE_CODE_LIMIT
+    def __init__(self, request, size_limit, *args, **kwargs):
+        super().__init__(request, *args, **kwargs)
+        self.remaining = size_limit
 
+def language_allowed(request: OmogenRequest, language):
+    contest = request.contest
+    if not contest:
+        return True
+    if contest.allow_only_python:
+        return language==Language.PYTHON3
+    return True
 
 @csrf_exempt
 @requires_user()
@@ -86,15 +97,19 @@ def submit(request: OmogenRequest, short_name: str, user: Account, contest: Cont
         raise Http404()
     if not can_submit_in_contest(contest):
         raise PermissionDenied()
-    request.upload_handlers.insert(0, SourceLimitCappingHandler(request))  # type: ignore
-    exceeded_file_size = request.META.get('upload_was_capped', False)
+    size_limit = min(SOURCE_CODE_LIMIT,problem.submission_size_limit_in_bytes)
+    request.upload_handlers.insert(0, SourceLimitCappingHandler(request, size_limit))  # type: ignore
     form = SubmitForm(problem.short_name, data=request.POST, files=request.FILES)
+    exceeded_file_size = request.META.get('upload_was_capped', False)
     if exceeded_file_size:
-        return JsonResponse({'errors': {'upload_files': [f'The source code limit is {SOURCE_CODE_LIMIT // 1000} KB.']}})
+        return JsonResponse({'errors': {'upload_files': [f'The source code limit is {size_limit // 1000} KB.']}})
+
     # Note: don't validate the rest of the form if we killed uploads
     if not form.is_valid():
         return JsonResponse({'errors': form.errors})
     language = Language(form.cleaned_data['language'])
+    if not language_allowed(request, language):
+        return JsonResponse({'errors': {'upload_files': [f'Only python is allowed.']}})
     submission = create_submission(
         owner=user,
         problem=problem,

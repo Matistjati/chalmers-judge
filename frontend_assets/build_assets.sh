@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
+set -v
 
 assets_path=`realpath $(dirname $0)`
 output_path=`realpath $(dirname $0)`/../output
 
 (cd $assets_path;
+    set -v;
     npm install;
     rm -rf $assets_path/static;
     mkdir $assets_path/static;

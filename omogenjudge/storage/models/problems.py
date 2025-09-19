@@ -41,6 +41,7 @@ class Problem(PrefetchIDMixin, models.Model):
     source = django_fields.TextField()
     license = EnumField(enum_type=License)
     current_version = models.ForeignKey('ProblemVersion', models.RESTRICT, related_name='+')
+    submission_size_limit_in_bytes = models.IntegerField(default=200000)
 
     @cached_property
     def titles_by_language(self):

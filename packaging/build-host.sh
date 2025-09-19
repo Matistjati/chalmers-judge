@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -e
+set -v
 
 base_path=`dirname -- "$0"`/..
 judgehost_path=$base_path/judgehost
