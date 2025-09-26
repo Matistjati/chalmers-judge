@@ -5,7 +5,6 @@ After=network.target
 [Service]
 Type=simple
 Restart=always
-User=omogenjudge-host
 ExecStart=/usr/bin/omogenjudge-host
 
 [Install]
