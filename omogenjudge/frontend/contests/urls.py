@@ -10,6 +10,7 @@ from omogenjudge.frontend.submissions.queue import my_submissions, submission_qu
 from omogenjudge.frontend.submissions.view_submission import view_submission
 
 urlpatterns = [
+    path('<slug:contest_short_name>/', list_problems, name='contest-default'),
     path('<slug:contest_short_name>/register', register, name='contest-register'),
     path('<slug:contest_short_name>/scoreboard', view_scoreboard, name='contest-scoreboard'),
     path('<slug:contest_short_name>/countdown', countdown, name='contest-countdown'),

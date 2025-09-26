@@ -41,4 +41,6 @@ def view_archive(request: OmogenRequest, group_path: Optional[str] = None) -> Ht
         groups = root_contest_groups()
         contests = []
 
+    groups.sort(key=lambda group: -group.order)
+
     return render_template(request, 'archive/view_archive.html', ArchiveArgs(current_groups, groups, contests))

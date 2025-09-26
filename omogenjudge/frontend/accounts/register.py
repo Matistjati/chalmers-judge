@@ -97,10 +97,9 @@ def register(request: OmogenRequest) -> HttpResponse:
             else:
                 account.email_validated = True
                 account.save()
-            messages.add_message(request, messages.INFO,
+            messages.add_message(request, messages.SUCCESS,
                                  'Your account was successfully created. '
-                                 'To log in you must verify your account. '
-                                 'We have sent an email to you with instructions on how to verify it.')
+                                 'You may now log in an and start solving problems!')
             return redirect('login')
     else:
         form = RegisterForm()

@@ -20,10 +20,13 @@ from omogenjudge.storage.stored_files import insert_file
 def _add_or_update_problem(db_problem: Optional[Problem], problem: ToolsProblem) -> Problem:
     if not db_problem:
         db_problem = Problem(short_name=problem.shortname)
-    author = [author.strip() for author in problem.config.get('author').split(",")]
-    db_problem.author = author
-    db_problem.license = License(problem.config.get('license'))
-    db_problem.source = problem.config.get('source')
+
+    metadata = problem.metadata
+    authors = [person.name for person in metadata.credits.authors]
+    source = metadata.source[0].name if metadata.source else ""
+    db_problem.author = authors
+    db_problem.license = License(str(metadata.license))
+    db_problem.source = source
     return db_problem
 
 
@@ -47,7 +50,7 @@ def _add_group(parent: Optional[ProblemTestgroup], group: ToolsGroup, db_version
     group_name = os.path.basename(group._datadir)
     if parent:
         group_name = f'{parent.testgroup_name}/{group_name}'
-    output = shlex.split(group._problem.config.get('validator_flags') + ' ' + group.config['output_validator_flags'])
+    output = shlex.split(group._problem.metadata.legacy_validator_flags + ' ' + group.config['output_validator_flags'])
 
     scoring_mode = ScoringMode.SUM
     verdict_mode = VerdictMode.WORST_ERROR
@@ -135,7 +138,7 @@ def _add_validator(problem: ToolsProblem) -> ProblemOutputValidator:
         db_validator = ProblemOutputValidator(
             run_command=validator.get_runcmd(tmp_validator),
             validator_zip=_zip_program(tmp_validator),
-            scoring_validator=problem.config.get('grading')['custom_scoring']
+            scoring_validator=problem.metadata.legacy_custom_score
         )
     db_validator.save()
     return db_validator
@@ -162,21 +165,21 @@ def _add_grader(problem: ToolsProblem) -> Optional[ProblemGrader]:
 
 
 def _add_version(problem: ToolsProblem, db_problem: Problem) -> ProblemVersion:
-    limits = problem.config.get('limits')
+    limits = problem.metadata.limits
     db_version = ProblemVersion(
         problem=db_problem,
-        time_limit_ms=limits.get('time') * 1000,
-        memory_limit_kb=limits.get('memory') * 1000,
-        scoring=problem.is_scoring,
-        interactive=problem.is_interactive,
+        time_limit_ms=1000 * (limits.time_limit or 1),
+        memory_limit_kb=limits.memory * 1000,
+        scoring=problem.is_scoring(),
+        interactive=problem.is_interactive(),
         included_files=_included_files(problem),
     )
     db_version.prefetch_id()
     db_version.root_group = _add_testdata(problem, db_version)
     if db_version.scoring:
-        grading_settings = problem.config.get('grading')
-        db_version.score_maximization = grading_settings['objective'] == 'max'
-    if problem.config.get('validation-type') == 'custom':
+        grading_settings = problem.metadata.legacy_grading
+        db_version.score_maximization = grading_settings.objective == 'max'
+    if problem.metadata.legacy_validation == 'custom':
         db_version.output_validator = _add_validator(problem)
     db_version.custom_grader = _add_grader(problem)
     db_version.save()
@@ -188,7 +191,7 @@ def _add_statement(problem: ToolsProblem, language_code: str, db_problem: Proble
     statement = ProblemStatement(
         language=language_code,
         problem=db_problem,
-        title=problem.config.get('name')[language_code]
+        title=problem.metadata.name[language_code]
     )
 
     with tempfile.TemporaryDirectory() as tmp_dest:
@@ -226,7 +229,7 @@ def _add_statements(problem: ToolsProblem, db_problem: Problem):
     db_problem.statements.all().delete()
     db_problem.statement_files.all().delete()
     statement = problem.statement
-    for lang in statement.languages:
+    for lang, path in statement.statements.items():
         _add_statement(problem, lang, db_problem)
     for attachment_path in problem.attachments.attachments:
         with open(attachment_path, 'rb') as attachment:
