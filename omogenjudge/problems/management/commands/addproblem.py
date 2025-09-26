@@ -4,7 +4,7 @@ import sys
 
 import problemtools.verifyproblem
 from django.core.management import BaseCommand
-from problemtools.verifyproblem import Problem
+from problemtools.verifyproblem import Problem, argparser
 
 import omogenjudge.storage.models
 from omogenjudge.problems.install import install_problem
@@ -25,7 +25,7 @@ class Command(BaseCommand):
         for path in options['path']:
             path = os.path.abspath(path)
             logger.info("Installing problem at path %s", path)
-            with Problem(path) as problem:
+            with Problem(path, argparser().parse_args()) as problem:
                 try:
                     problem_by_name(problem.shortname)
                     if not ask_yes_or_no("Problem already exists: update it (y/N)?", False):
@@ -34,7 +34,7 @@ class Command(BaseCommand):
                 except omogenjudge.storage.models.Problem.DoesNotExist:
                     update_existing = False
 
-                num_errors, num_warnings = problem.check(problemtools.verifyproblem.argparser().parse_args([None]))
+                num_errors, num_warnings = problem.check()
                 if num_errors:
                     logger.error("Problem has errors: exiting")
                     sys.exit(1)
