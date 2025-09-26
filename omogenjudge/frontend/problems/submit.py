@@ -81,7 +81,7 @@ def language_allowed(request: OmogenRequest, language):
     contest = request.contest
     if not contest:
         return True
-    if contest.allow_only_python:
+    if contest.only_allow_python:
         return language==Language.PYTHON3
     return True
 

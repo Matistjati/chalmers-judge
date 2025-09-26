@@ -10,9 +10,9 @@ from omogenjudge.util.contest_urls import redirect_contest
 def only_started_contests(f, *, allow_practice=True):
     def wrapped(*args, **kwargs):
         request = args[0]
-        if request.contest and not request.contest.has_started and (
-                not allow_practice or not request.contest.only_virtual_contest) and \
-                not request.user.is_superuser:
+        if request.contest and not request.contest.has_started and \
+            ((not allow_practice and (request.contest.only_virtual_contest or request.contest.only_practice_contest))) and \
+            not request.user.is_superuser:
             return redirect_contest('countdown')
         return f(*args, **kwargs)
 

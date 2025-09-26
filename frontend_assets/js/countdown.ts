@@ -24,7 +24,7 @@ function registerCountdown(el: Element) {
 function updateCountdowns() {
     let str = "";
     if (getContext().contest_start_timestamp === null) {
-        if (getContext().only_virtual) {
+        if (getContext().only_virtual || getContext().only_practice) {
             str = "Practice contest";
         }
         else if (getContext().flexible_start_window_end_time != null)

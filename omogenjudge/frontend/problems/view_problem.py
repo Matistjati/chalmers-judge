@@ -73,7 +73,7 @@ def view_problem(request: OmogenRequest, short_name: str, language: Optional[str
         submission_sizelim_kb='{:.0f}'.format(round(problem.submission_size_limit_in_bytes / 1000)),
         is_scoring=problem.current_version.scoring,
         subtask_scores=subtasks,
-        submit_form=SubmitForm(problem.short_name, allowed_languages=[Language.display(Language.PYTHON3)] if request.contest.allow_only_python else None),
+        submit_form=SubmitForm(problem.short_name, allowed_languages=[Language.display(Language.PYTHON3)] if request.contest.only_allow_python else None),
         source_code_limit=SOURCE_CODE_LIMIT,
         submissions=submissions_with_subtasks,
         attachments=sorted(attachments.items(), key=lambda it: it[0]),

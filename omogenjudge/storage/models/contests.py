@@ -23,22 +23,24 @@ class Contest(models.Model):
     short_name = django_fields.TextField(unique=True)
     title = django_fields.TextField()
     host_name = django_fields.TextField(blank=True, null=True)
-    allow_only_python = models.BooleanField(default=False)
+    only_allow_python = models.BooleanField(default=False)
 
     # An only virtual contest never runs as a contest, but should still have an e.g. duration because it can be done
-    # virtually
-    only_virtual_contest = models.BooleanField(default=False)  # TODO: not implemented
+    # virtually. Also allows practice
+    only_virtual_contest = models.BooleanField(default=False)
+    # Can only register for practice. Disallows virtual
+    only_practice_contest = models.BooleanField(default=False)
     start_time = models.DateTimeField(null=True, blank=True)
     duration = models.DurationField()
     # If set, this contest may be started at an arbitrary time between start_time and flexible_start_window_end_time.
-    flexible_start_window_end_time = models.DateTimeField(null=True, blank=True)  # TODO: not implemented
+    flexible_start_window_end_time = models.DateTimeField(null=True, blank=True)
 
     problems = models.ManyToManyField(Problem, through='ContestProblem')
     scoring_type = EnumField(enum_type=ScoringType)
     # Whether contestants should be able to view anything about each other.
-    public_scoreboard = models.BooleanField(default=False)  # TODO: not implemented
+    public_scoreboard = models.BooleanField(default=False)  # TODO: not implemented (?)
 
-    allow_registration = models.BooleanField(default=False)  # TODO: not implemented
+    allow_registration = models.BooleanField(default=False)
 
     try_penalty = models.IntegerField(null=False, default=20)
 
@@ -59,7 +61,7 @@ class Contest(models.Model):
 
     @cached_property
     def open_for_practice(self):
-        if self.only_virtual_contest:
+        if self.only_virtual_contest or self.only_practice_contest:
             return True
         if self.flexible_start_window_end_time:
             return timezone.now() > self.flexible_start_window_end_time

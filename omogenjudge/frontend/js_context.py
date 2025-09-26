@@ -16,6 +16,7 @@ class JsContext:
     contest_ended: bool
     flexible_start_window_end_time: int
     only_virtual: bool
+    only_practice: bool
 
 
 def js_context(request: OmogenRequest) -> Dict[str, str]:
@@ -31,7 +32,8 @@ def js_context(request: OmogenRequest) -> Dict[str, str]:
                     contest_ended=contest_has_ended_for_team(contest, team),
                     flexible_start_window_end_time=int(contest.flexible_start_window_end_time.timestamp()) if
                         contest.flexible_start_window_end_time else None,
-                    only_virtual=contest.only_virtual_contest
+                    only_virtual=contest.only_virtual_contest,
+                    only_practice=contest.only_practice_contest
                 ))),
         }
     return {}

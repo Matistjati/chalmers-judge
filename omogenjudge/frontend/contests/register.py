@@ -15,10 +15,16 @@ from omogenjudge.util.django_types import OmogenRequest
 @require_http_methods(["POST"])
 def register(request: OmogenRequest, user: Account, contest: Contest) -> HttpResponse:
     type = request.POST["type"]
+
+    if not contest.allow_registration:
+        raise BadRequest()
+
     if contest.open_for_practice:
         if type == "practice":
             register_user_for_practice(contest, user)
         elif type == "virtual":
+            if contest.only_practice_contest:
+                raise BadRequest()
             register_user_for_virtual(contest, user)
         else:
             raise BadRequest()

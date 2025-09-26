@@ -10,6 +10,7 @@ export type Context = {
     contest_ended: boolean;
     flexible_start_window_end_time?: number;
     only_virtual: boolean;
+    only_practice: boolean;
 };
 
 let context: Context | null = null;
