@@ -15,7 +15,7 @@ Task Archive
 {% macro progress_badge(progress) %}
     {% if progress and progress.total > 0 %}
         <span class="badge"
-              style="background-color: {{ progress_hsl(progress.pct) }}; color: #000;">
+              style="background-color: {{ progress_hsl(progress.pct) }}; color: #000; font-size: 0.75rem;">
             {{ progress.solved }}/{{ progress.total }} solved ({{ progress.pct|round(0, 'floor')|int }}%)
         </span>
     {% endif %}
