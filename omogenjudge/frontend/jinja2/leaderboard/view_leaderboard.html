@@ -21,7 +21,7 @@
                 <tr>
                     <td class="text-center align-middle">{{ row.rank }}</td>
                     <td class="align-middle">
-                        <a href="{{ url('profile', row.username) }}">{{ row.username }}</a>
+                        {{ row.username }}
                         {% if row.full_name %}
                             <span class="text-muted ms-2">{{ row.full_name }}</span>
                         {% endif %}
@@ -33,6 +33,13 @@
                     <td colspan="3" class="text-center text-muted">No solves yet.</td>
                 </tr>
             {% endfor %}
+            {% if has_hidden %}
+                <tr>
+                    <td class="text-center text-muted">…</td>
+                    <td class="text-muted">…</td>
+                    <td class="text-center text-muted">…</td>
+                </tr>
+            {% endif %}
             </tbody>
         </table>
     </div>

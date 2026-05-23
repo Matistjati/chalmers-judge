@@ -31,6 +31,7 @@ class LeaderboardRow:
 class LeaderboardArgs:
     rows: List[LeaderboardRow]
     total_problems: int
+    has_hidden: bool
 
 
 def _visible_problem_ids() -> Tuple[Set[int], Dict[int, float]]:
@@ -78,6 +79,7 @@ def view_leaderboard(request: OmogenRequest) -> HttpResponse:
         ac_by_user[account_id].add(problem_id)
 
     solves_by_user: Dict[int, int] = {}
+    has_hidden = False
     user_ids: Set[int] = set(best_by_user.keys()) | set(ac_by_user.keys())
     for uid in user_ids:
         solved_count = 0
@@ -94,8 +96,10 @@ def view_leaderboard(request: OmogenRequest) -> HttpResponse:
                 continue
             if best >= max_score:
                 solved_count += 1
-        if solved_count > 0:
+        if solved_count >= 5:
             solves_by_user[uid] = solved_count
+        elif solved_count > 0:
+            has_hidden = True
 
     accounts = Account.objects.filter(account_id__in=solves_by_user.keys()).only(
         'account_id', 'username', 'full_name'
@@ -125,5 +129,9 @@ def view_leaderboard(request: OmogenRequest) -> HttpResponse:
     return render_template(
         request,
         'leaderboard/view_leaderboard.html',
-        LeaderboardArgs(rows=rows, total_problems=len(problem_ids)),
+        LeaderboardArgs(
+            rows=rows,
+            total_problems=len(problem_ids),
+            has_hidden=has_hidden,
+        ),
     )
