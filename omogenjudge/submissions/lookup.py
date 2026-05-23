@@ -29,7 +29,7 @@ def list_account_problem_submissions(*,
     return qs
 
 
-def list_queue_submissions(user_ids: list[int] | None, problem_ids: list[int], *, ascending: bool=False) -> \
+def list_queue_submissions(user_ids: list[int] | None, problem_ids: list[int] | None, *, ascending: bool=False) -> \
         QuerySet[Submission]:
     filters = {}
     if user_ids is not None:

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% import "problems/helpers.html" as problemhelpers with context %}
+{% import "submissions/helpers.html" as submissionhelpers with context %}
+{% import "util.html" as util %}
+{% import "formatting.html" as formatting %}
+
+{% set active_page = 'queue' %}
+{% block title %}Submission queue{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-lg-12">
+        <h2 class="mb-3">Submission queue</h2>
+        <table class="table table-striped table-sm">
+            <thead>
+            <tr class="bg-dark text-light">
+                <th>ID</th>
+                <th>Submitted</th>
+                <th>Author</th>
+                <th>Problem</th>
+                <th>Contest</th>
+                <th class="text-center">Score / Verdict</th>
+                <th class="text-center">Time</th>
+                <th style="width: 0"></th>
+            </tr>
+            </thead>
+            {% for sub_with_scores in submissions %}
+            {% set sub = sub_with_scores.submission %}
+            {% set problem_with_scores = problems[sub.problem_id] %}
+            {% set problem = problem_with_scores.problem %}
+            {% set contest_sn = problem_contest_short_name[sub.problem_id] %}
+            <tr class="align-middle">
+                <td>{{ sub.submission_id }}</td>
+                <td>{{ util.simple_local_date(sub.date_created) }}</td>
+                <td>{{ sub.account.full_name }}</td>
+                <td>
+                    {% if contest_sn %}
+                        <a href="{{ url('contest-problem', contest_sn, problem.short_name) }}">{{ problemhelpers.problem_title(problem) }}</a>
+                    {% else %}
+                        {{ problemhelpers.problem_title(problem) }}
+                    {% endif %}
+                </td>
+                <td>
+                    {% if contest_sn %}
+                        <a href="{{ url('contest-problems', contest_sn) }}">{{ contest_sn }}</a>
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                </td>
+                <td class="text-center">
+                    {% if problem.current_version.scoring %}
+                    {{ submissionhelpers.display_score_verdict(sub.current_run, sub_with_scores.subtask_scores, problem_with_scores.subtask_scores) }}
+                    {% else %}
+                    {{ submissionhelpers.display_verdict(sub.current_run) }}
+                    {% endif %}
+                </td>
+                <td class="text-center">
+                    {{ formatting.format_time_limit(sub.current_run.time_usage_ms, problem.current_version.time_limit_ms) }}
+                </td>
+                <td>
+                    <a class="btn btn-primary" style="white-space: nowrap"
+                       href="{{ url('submission', sub.submission_id) }}">View details</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+{% endblock %}

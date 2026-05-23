@@ -20,6 +20,10 @@
                         {{ nav_item('Contest', 'problems', active_page == 'contest') }}
                     {% else %}
                         {{ nav_item('Archive', 'archive', active_page == 'archive') }}
+                        {{ nav_item('Problems', 'problems', active_page == 'problems') }}
+                        {% if user.is_superuser %}
+                            {{ nav_item('Queue', 'global-queue', active_page == 'queue') }}
+                        {% endif %}
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav">

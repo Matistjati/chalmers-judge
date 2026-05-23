@@ -3,12 +3,13 @@ import dataclasses
 from typing import List, Optional
 
 from django.http import Http404, HttpResponse
+from django.shortcuts import redirect
 
 from omogenjudge.frontend.decorators import requires_user
 from omogenjudge.problems.lookup import contest_problems
 from omogenjudge.problems.testgroups import get_subtask_scores, get_submission_subtask_scores, \
     get_submission_subtask_groups
-from omogenjudge.storage.models import Language, Problem, Submission, SubmissionGroupRun, Account, Contest
+from omogenjudge.storage.models import ContestProblem, Language, Problem, Submission, SubmissionGroupRun, Account, Contest
 from omogenjudge.submissions.lookup import get_submission_for_view
 from omogenjudge.util.django_types import OmogenRequest
 from omogenjudge.util.templates import render_template
@@ -40,7 +41,17 @@ class ViewArgs:
 def view_submission(request: OmogenRequest, sub_id: int, user: Account) -> HttpResponse:
     if request.contest:
         return view_contest_submission(request, request.contest, user, sub_id)
-    raise NotImplementedError
+    if not user.is_superuser:
+        raise Http404
+    submission = get_submission_for_view(sub_id)
+    cp = (ContestProblem.objects
+          .filter(problem_id=submission.problem_id)
+          .select_related('contest')
+          .order_by('contest_id')
+          .first())
+    if cp is None:
+        raise Http404
+    return redirect('contest-submission', contest_short_name=cp.contest.short_name, sub_id=sub_id)
 
 
 def view_contest_submission(request: OmogenRequest, contest: Contest, user: Account, sub_id: int) -> HttpResponse:
