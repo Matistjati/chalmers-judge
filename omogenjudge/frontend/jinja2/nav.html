@@ -21,6 +21,7 @@
                     {% else %}
                         {{ nav_item('Archive', 'archive', active_page == 'archive') }}
                         {{ nav_item('Problems', 'problems', active_page == 'problems') }}
+                        {{ nav_item('Leaderboard', 'leaderboard', active_page == 'leaderboard') }}
                         {% if user.is_superuser %}
                             {{ nav_item('Queue', 'global-queue', active_page == 'queue') }}
                         {% endif %}
