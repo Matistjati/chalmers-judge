@@ -31,25 +31,23 @@
                         {% endif %}
                     </td>
                     {% if show_progress %}
-                        {% if row.solved %}
-                            <td class="align-middle text-center"
-                                style="background-color: {{ progress_hsl(100) }}; color: #000; white-space: nowrap">
-                                Solved
-                            </td>
-                        {% elif row.best_score is not none and row.max_score > 0 %}
-                            {% set pct = (row.best_score / row.max_score * 100) %}
-                            <td class="align-middle text-center"
-                                style="background-color: {{ progress_hsl(pct) }}; color: #000; white-space: nowrap">
-                                {{ formatting.format_score(row.best_score) }} / {{ formatting.format_score(row.max_score) }}
-                            </td>
-                        {% elif row.best_score is not none %}
-                            <td class="align-middle text-center"
-                                style="background-color: {{ progress_hsl(0) }}; color: #000; white-space: nowrap">
-                                Attempted
-                            </td>
-                        {% else %}
-                            <td class="align-middle text-center text-muted">—</td>
-                        {% endif %}
+                        <td class="align-middle text-center">
+                            {% if row.solved %}
+                                <span class="badge rounded-pill"
+                                      style="background-color: {{ progress_hsl(100) }}; color: #000;">Solved</span>
+                            {% elif row.best_score is not none and row.max_score > 0 %}
+                                {% set pct = (row.best_score / row.max_score * 100) %}
+                                <span class="badge rounded-pill"
+                                      style="background-color: {{ progress_hsl(pct) }}; color: #000;">
+                                    {{ formatting.format_score(row.best_score) }} / {{ formatting.format_score(row.max_score) }}
+                                </span>
+                            {% elif row.best_score is not none %}
+                                <span class="badge rounded-pill"
+                                      style="background-color: {{ progress_hsl(0) }}; color: #000;">Attempted</span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
                     {% endif %}
                 </tr>
             {% endfor %}
