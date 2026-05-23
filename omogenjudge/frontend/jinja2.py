@@ -91,6 +91,15 @@ def emoji_flag(language):
     return language_to_flag.get(language, language)
 
 
+def progress_hsl(pct: Optional[float]) -> str:
+    """Kattis-style whitemode red→green gradient. pct in [0, 100]."""
+    if pct is None:
+        return "transparent"
+    clamped = max(0.0, min(100.0, float(pct)))
+    hue = clamped * 1.2  # 0 → red, 120 → green
+    return f"hsl({hue:.0f}, 65%, 78%)"
+
+
 def environment(**options):
     env = Environment(**options)
     env.globals.update({
@@ -105,6 +114,7 @@ def environment(**options):
         "format_duration_ms": format_duration_ms,
         "preferred_languages": preferred_languages,
         "emoji_flag": emoji_flag,
+        "progress_hsl": progress_hsl,
     })
     env.filters.update({
         "format_duration_ms": format_duration_ms,
