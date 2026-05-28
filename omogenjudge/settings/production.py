@@ -7,7 +7,7 @@ CONFIG_FILE_PATH = os.environ.get("OMOGEN_CONFIG_FILE_PATH") or "/etc/omogen/web
 with open(CONFIG_FILE_PATH, "r") as f:
     config = toml.load(f)
 
-DEBUG=True
+DEBUG=False
 
 SECRET_KEY = config['web']['secret_key']
 
