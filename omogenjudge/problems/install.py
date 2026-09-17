@@ -3,13 +3,16 @@ import os.path
 import shlex
 import tempfile
 import zipfile
+from pathlib import Path
 from typing import Optional
 
 import argparse
 import problemtools.run
 from django.db import transaction
 from problemtools import problem2html
-from problemtools.verifyproblem import Problem as ToolsProblem, TestCase as ToolsCase, TestCaseGroup as ToolsGroup
+from problemtools.diagnostics import Diagnostics
+from problemtools.metadata import Metadata
+from problemtools.model import Problem as ToolsProblem, TestCase as ToolsCase, TestDataGroup as ToolsGroup
 
 from omogenjudge.storage.models import IncludedFiles, Problem, ProblemOutputValidator, ProblemStatement, \
     ProblemStatementFile, ProblemTestcase, \
@@ -31,14 +34,13 @@ def _add_or_update_problem(db_problem: Optional[Problem], problem: ToolsProblem)
 
 
 def _add_case(db_group: ProblemTestgroup, case: ToolsCase) -> ProblemTestcase:
-    name = os.path.basename(case._base)
     with open(case.infile, 'rb') as infile:
         input_file = insert_file(infile.read())
     with open(case.ansfile, 'rb') as outfile:
         output_file = insert_file(outfile.read())
     db_case = ProblemTestcase(
         problem_testgroup=db_group,
-        testcase_name=name,
+        testcase_name=case.path.name,
         input_file=input_file,
         output_file=output_file,
     )
@@ -46,11 +48,12 @@ def _add_case(db_group: ProblemTestgroup, case: ToolsCase) -> ProblemTestcase:
     return db_case
 
 
-def _add_group(parent: Optional[ProblemTestgroup], group: ToolsGroup, db_version: ProblemVersion) -> ProblemTestgroup:
-    group_name = os.path.basename(group._datadir)
+def _add_group(parent: Optional[ProblemTestgroup], group: ToolsGroup, db_version: ProblemVersion,
+               metadata: Metadata) -> ProblemTestgroup:
+    group_name = group.datadir.name
     if parent:
         group_name = f'{parent.testgroup_name}/{group_name}'
-    output = shlex.split(group._problem.metadata.legacy_validator_flags + ' ' + group.config['output_validator_flags'])
+    output = shlex.split(metadata.legacy_validator_flags + ' ' + group.config['output_validator_flags'])
 
     scoring_mode = ScoringMode.SUM
     verdict_mode = VerdictMode.WORST_ERROR
@@ -93,26 +96,18 @@ def _add_group(parent: Optional[ProblemTestgroup], group: ToolsGroup, db_version
     for case in group.get_testcases():
         _add_case(db_group, case)
     for subgroup in group.get_subgroups():
-        _add_group(db_group, subgroup, db_version)
+        _add_group(db_group, subgroup, db_version, metadata)
     return db_group
 
 
 def _add_testdata(problem: ToolsProblem, db_version: ProblemVersion) -> ProblemTestgroup:
-    return _add_group(None, problem.testdata, db_version)
+    return _add_group(None, problem.testdata, db_version, problem.metadata)
 
 
 def _included_files(problem: ToolsProblem) -> IncludedFiles:
     include_dict: dict[str, dict[str, str]] = {}
-    includes = os.path.join(problem.probdir, 'include')
-    if os.path.isdir(includes):
-        for langname in os.listdir(includes):
-            include_dict[langname] = {}
-            for lang_dir, _, files in os.walk(os.path.join(includes, langname)):
-                for file_name in files:
-                    abs_path = os.path.join(lang_dir, file_name)
-                    rel_path = os.path.relpath(abs_path, lang_dir)
-                    with open(abs_path, 'r') as file:
-                        include_dict[langname][rel_path] = file.read()
+    for language, includes in problem.includes.languages.items():
+        include_dict[language] = {str(file.path): file.data.decode() for file in includes.files}
     return IncludedFiles(files_by_language=include_dict)
 
 
@@ -129,12 +124,14 @@ def _zip_program(path) -> StoredFile:
 def _add_validator(problem: ToolsProblem) -> ProblemOutputValidator:
     # We recompile the validator to ensure that we have a directory only with a single validator present.
     # Otherwise, it's annoying to handle the case of multiple single-file validators in the same directory.
+    # It also keeps us from reusing programs already compiled into verifyproblem's (now deleted) work dir.
     with tempfile.TemporaryDirectory() as tmp_validator:
         validator = problemtools.run.find_programs(
-            os.path.join(problem.probdir, "output_validators"),
-            language_config=problem.language_config,
-            work_dir=tmp_validator)[0]
-        validator.compile()
+            os.path.join(problem.probdir, problem.format_version.output_validator_directory),
+            language_config=problem.language_config)[0]
+        result = validator.compile(Path(tmp_validator))
+        if not result.success:
+            raise ValueError(f"Failed to compile output validator: {result.errmsg}")
         db_validator = ProblemOutputValidator(
             run_command=validator.get_runcmd(tmp_validator),
             validator_zip=_zip_program(tmp_validator),
@@ -150,12 +147,13 @@ def _add_grader(problem: ToolsProblem) -> Optional[ProblemGrader]:
     with tempfile.TemporaryDirectory() as tmp_grader:
         graders = problemtools.run.find_programs(
             os.path.join(problem.probdir, "graders"),
-            language_config=problem.language_config,
-            work_dir=tmp_grader)
+            language_config=problem.language_config)
         if not graders:
             return None
         grader = graders[0]
-        grader.compile()
+        result = grader.compile(Path(tmp_grader))
+        if not result.success:
+            raise ValueError(f"Failed to compile grader: {result.errmsg}")
         db_grader = ProblemGrader(
             run_command=grader.get_runcmd(tmp_grader),
             grader_zip=_zip_program(tmp_grader),
@@ -164,22 +162,22 @@ def _add_grader(problem: ToolsProblem) -> Optional[ProblemGrader]:
     return db_grader
 
 
-def _add_version(problem: ToolsProblem, db_problem: Problem) -> ProblemVersion:
-    limits = problem.metadata.limits
+def _add_version(problem: ToolsProblem, db_problem: Problem, time_limit: float) -> ProblemVersion:
+    metadata = problem.metadata
+    limits = metadata.limits
     db_version = ProblemVersion(
         problem=db_problem,
-        time_limit_ms=1000 * (limits.time_limit or 1),
+        time_limit_ms=round(1000 * time_limit),
         memory_limit_kb=limits.memory * 1000,
-        scoring=problem.is_scoring(),
-        interactive=problem.is_interactive(),
+        scoring=metadata.is_scoring(),
+        interactive=metadata.is_interactive(),
         included_files=_included_files(problem),
     )
     db_version.prefetch_id()
     db_version.root_group = _add_testdata(problem, db_version)
     if db_version.scoring:
-        grading_settings = problem.metadata.legacy_grading
-        db_version.score_maximization = grading_settings.objective == 'max'
-    if problem.metadata.legacy_validation == 'custom':
+        db_version.score_maximization = metadata.legacy_grading.objective == 'max'
+    if not problem.output_validators.uses_default(problem.format_version, metadata):
         db_version.output_validator = _add_validator(problem)
     db_version.custom_grader = _add_grader(problem)
     db_version.save()
@@ -187,7 +185,7 @@ def _add_version(problem: ToolsProblem, db_problem: Problem) -> ProblemVersion:
     return db_version
 
 
-def _add_statement(problem: ToolsProblem, language_code: str, db_problem: Problem):
+def _add_statement(problem: ToolsProblem, language_code: str, db_problem: Problem, diagnostics: Diagnostics):
     statement = ProblemStatement(
         language=language_code,
         problem=db_problem,
@@ -198,6 +196,7 @@ def _add_statement(problem: ToolsProblem, language_code: str, db_problem: Proble
         args = argparse.Namespace()
         args.destdir = tmp_dest
         args.quiet = True
+        args.loglevel = 'warning'
         args.tidy = True
         args.destfile = "index.html"
         args.language = language_code
@@ -206,7 +205,7 @@ def _add_statement(problem: ToolsProblem, language_code: str, db_problem: Proble
         args.headers = False
         args.imgbasedir = f"/problems/{problem.shortname}/img/{language_code}"
         args.problem = problem.probdir
-        problem2html.convert(args)
+        problem2html.convert(args, diagnostics)
 
         with open(os.path.join(tmp_dest, 'index.html'), 'r') as html:
             statement.html = html.read()
@@ -225,13 +224,12 @@ def _add_statement(problem: ToolsProblem, language_code: str, db_problem: Proble
     statement.save()
 
 
-def _add_statements(problem: ToolsProblem, db_problem: Problem):
+def _add_statements(problem: ToolsProblem, db_problem: Problem, diagnostics: Diagnostics):
     db_problem.statements.all().delete()
     db_problem.statement_files.all().delete()
-    statement = problem.statement
-    for lang, path in statement.statements.items():
-        _add_statement(problem, lang, db_problem)
-    for attachment_path in problem.attachments.attachments:
+    for lang in problem.statements.by_language:
+        _add_statement(problem, lang, db_problem, diagnostics)
+    for attachment_path in problem.attachments.paths:
         with open(attachment_path, 'rb') as attachment:
             ProblemStatementFile(
                 problem=db_problem,
@@ -241,7 +239,8 @@ def _add_statements(problem: ToolsProblem, db_problem: Problem):
             ).save()
 
 
-def install_problem(problem: ToolsProblem, *, update_existing=False) -> Problem:
+def install_problem(problem: ToolsProblem, diagnostics: Diagnostics, *, time_limit: float,
+                    update_existing=False) -> Problem:
     with transaction.atomic():
         try:
             db_problem = Problem.objects.get(short_name=problem.shortname)
@@ -253,7 +252,7 @@ def install_problem(problem: ToolsProblem, *, update_existing=False) -> Problem:
             db_problem = _add_or_update_problem(None, problem)
             db_problem.prefetch_id()
 
-        _add_version(problem, db_problem)
-        _add_statements(problem, db_problem)
+        _add_version(problem, db_problem, time_limit)
+        _add_statements(problem, db_problem, diagnostics)
         db_problem.save()
     return db_problem

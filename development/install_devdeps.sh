@@ -19,7 +19,7 @@ echo "Installing Python build dependencies"
 sudo apt install build-essential
 
 echo "Installing problemtools dependencies"
-sudo apt install automake libgmp-dev libboost-regex-dev
+sudo apt install automake
 
 echo "Installing bazel"
 sudo npm install -g @bazel/bazelisk
