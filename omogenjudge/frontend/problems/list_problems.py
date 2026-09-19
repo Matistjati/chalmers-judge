@@ -80,10 +80,14 @@ def list_archive_problems(request: OmogenRequest) -> HttpResponse:
         .prefetch_related(Prefetch(
             'problem__statements',
             ProblemStatement.objects.all().only('problem_id', 'language', 'title')))
-        .order_by('contest__title', 'label', 'problem__short_name')
+        # A practice contest is a problem's curated home, so let it claim the problem
+        # ahead of any one-off contest that also happened to use it. Without this, the
+        # contest__title tiebreak splits curated series across the archive.
+        .order_by('-contest__only_practice_contest', 'contest__title', 'label',
+                  'problem__short_name')
     )
 
-    # Dedup by problem: keep first contest seen (sorted by contest title).
+    # Dedup by problem: keep first contest seen (practice contests first, then by title).
     seen: Dict[int, ContestProblem] = {}
     for cp in contest_problems_qs:
         if cp.problem_id not in seen:
@@ -112,6 +116,9 @@ def list_archive_problems(request: OmogenRequest) -> HttpResponse:
             solved=pid in solved,
             best_score=best_scores.get(pid),
         ))
+
+    # Claiming order above is not display order; list by contest as before.
+    rows.sort(key=lambda r: (r.contest_title, r.contest_label, r.problem.short_name))
 
     return render_template(request, 'problems/archive_problems.html',
                            ArchiveProblemsArgs(rows=rows, show_progress=show_progress))
