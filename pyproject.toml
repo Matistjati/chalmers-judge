@@ -15,7 +15,8 @@ python = "^3.12"
 Django = "^5.2"
 psycopg2 = "^2.9.8"
 problemtools = {git = "https://github.com/kattis/problemtools", branch = "master"}
-plastex = {git = "https://github.com/plastex/plastex.git", branch = "master"}
+# Be careful when upgrading; Plastex's master branch breaks samples. See https://github.com/Kattis/problemtools/issues/428
+plastex = "3.1"
 django-crispy-forms = "^2.3"
 crispy-bootstrap5 = ">=2024.10"
 uWSGI = "^2.0.30"
