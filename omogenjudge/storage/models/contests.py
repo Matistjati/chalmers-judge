@@ -39,6 +39,8 @@ class Contest(models.Model):
     scoring_type = EnumField(enum_type=ScoringType)
     # Whether contestants should be able to view anything about each other.
     public_scoreboard = models.BooleanField(default=False)  # TODO: not implemented (?)
+    # Shot and submit: show a per-team count of every submission made, i.e. shots owed.
+    count_shots = models.BooleanField(default=False)
 
     allow_registration = models.BooleanField(default=False)
 

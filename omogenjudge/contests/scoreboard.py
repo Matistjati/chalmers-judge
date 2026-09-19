@@ -21,6 +21,10 @@ class ProblemResult:
     problem_score: float = 0
     subtask_scores: list[float] = dataclasses.field(default_factory=list)
     tiebreak: float = 0
+    # Every submission made, regardless of status; used for the shots counter. Excluded
+    # from equality since _process_team compares contest and upsolve results to decide
+    # whether to emit an upsolve row.
+    submissions: int = dataclasses.field(default=0, compare=False)
 
 
 @dataclasses.dataclass
@@ -34,6 +38,7 @@ class ScoreboardTeam:
     team: Team
     rank: int = 0
     total_score: float = 0
+    total_submissions: int = 0
     tiebreak: float = 0
     results: list[ProblemResult] = dataclasses.field(default_factory=list)
     virtual: bool = False
@@ -87,6 +92,7 @@ class ScoreboardMaker:
                                  self._process_team(team, team_problem_submissions[team])]
         for team in self.scoreboard_teams:
             team.total_score = self._round(sum(p.problem_score for p in team.results))
+            team.total_submissions = sum(p.submissions for p in team.results)
         self._sort_teams()
 
     def _process_team(self, team: Team, submissions: Dict[int, List[Submission]]) -> list[
@@ -97,8 +103,14 @@ class ScoreboardMaker:
         for scoreboard_problem in self.scoreboard_problems:
             all_submissions = submissions[scoreboard_problem.problem.problem_id]
             contest_submissions = self._contest_submissions(team, all_submissions)
-            problem_results.append(self._process_problem(contest_submissions, scoreboard_problem, start_time))
-            upsolved_results.append(self._process_problem(all_submissions, scoreboard_problem, start_time))
+
+            contest_result = self._process_problem(contest_submissions, scoreboard_problem, start_time)
+            contest_result.submissions = len(contest_submissions)
+            problem_results.append(contest_result)
+
+            upsolved_result = self._process_problem(all_submissions, scoreboard_problem, start_time)
+            upsolved_result.submissions = len(all_submissions)
+            upsolved_results.append(upsolved_result)
 
         teams = []
         if not team.practice or team.contest_start_time:

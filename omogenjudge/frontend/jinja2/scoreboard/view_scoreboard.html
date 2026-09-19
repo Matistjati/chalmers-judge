@@ -67,6 +67,13 @@
                                 >Tiebreak
                                 </th>
                             {% endif %}
+                            {% if contest.count_shots %}
+                                <th class="text-center" style="width: 4em"
+                                    data-bs-toggle="tooltip" data-bs-placement="top"
+                                    title="Submissions made = shots owed (one shot per submission)"
+                                >Shots
+                                </th>
+                            {% endif %}
                         {% endif %}
                     </tr>
                     </thead>
@@ -137,6 +144,13 @@
                                                 .
                                             {% endif %}
                                         {% endif %}
+                                        {% if contest.count_shots and res.submissions %}
+                                            <div style="font-size: 0.7rem; opacity: 0.6"
+                                                 data-bs-toggle="tooltip" data-bs-placement="bottom"
+                                                 title="{{ res.submissions }} submission(s) on this problem">
+                                                {{ res.submissions }}
+                                            </div>
+                                        {% endif %}
                                     </td>
                                 {% endfor %}
                                 <td class="text-center">{{ formatting.format_score(team.total_score) }}</td>
@@ -146,6 +160,9 @@
                                         {{ scoreboard.format_tiebreak(team.tiebreak) }}
                                         {% endif %}
                                     </td>
+                                {% endif %}
+                                {% if contest.count_shots %}
+                                    <td class="text-center">{{ team.total_submissions }}</td>
                                 {% endif %}
                             {% endif %}
                         </tr>
