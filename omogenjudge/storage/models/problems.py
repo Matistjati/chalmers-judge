@@ -168,7 +168,7 @@ class ProblemVersion(PrefetchIDMixin, models.Model):
     problem = models.ForeignKey(Problem, models.CASCADE)
     root_group = models.ForeignKey('ProblemTestgroup', models.RESTRICT, related_name='+')
     time_limit_ms = models.IntegerField()
-    memory_limit_kb = models.IntegerField()
+    memory_limit_mib = models.IntegerField()
     output_validator = models.ForeignKey(ProblemOutputValidator, models.RESTRICT, null=True)
     custom_grader = models.ForeignKey(ProblemGrader, models.RESTRICT, null=True)
     included_files = models.JSONField(

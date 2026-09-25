@@ -18,7 +18,7 @@ def get_problem_for_view(short_name: str, *, language: Optional[str] = None) -> 
         .prefetch_related(Prefetch('statement_files', queryset=ProblemStatementFile.objects.filter(attachment=1)))
         .select_related('current_version')
         .only('short_name', 'author', 'source', 'license', 'current_version__time_limit_ms',
-              'current_version__memory_limit_kb')
+              'current_version__memory_limit_mib')
         .get(short_name=short_name)
     )
     statements: dict[str, ProblemStatement] = {}

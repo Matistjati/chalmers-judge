@@ -168,7 +168,7 @@ def _add_version(problem: ToolsProblem, db_problem: Problem, time_limit: float) 
     db_version = ProblemVersion(
         problem=db_problem,
         time_limit_ms=round(1000 * time_limit),
-        memory_limit_kb=limits.memory * 1000,
+        memory_limit_mib=limits.memory,
         scoring=metadata.is_scoring(),
         interactive=metadata.is_interactive(),
         included_files=_included_files(problem),

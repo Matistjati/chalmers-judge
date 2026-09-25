@@ -89,7 +89,7 @@ type ProblemVersion struct {
 	RootGroupId       int64
 	RootGroup         *ProblemTestgroup `gorm:"foreignKey:RootGroupId; References:ProblemTestgroupId"`
 	TimeLimitMs       int64
-	MemoryLimitKb     int64
+	MemoryLimitMib    int64
 	OutputValidatorId int64
 	OutputValidator   ProblemOutputValidator
 	CustomGraderId    int64

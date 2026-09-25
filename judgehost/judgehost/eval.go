@@ -252,9 +252,9 @@ func makeEvalPlan(program *apipb.CompiledProgram, version storage.ProblemVersion
 	evalPlan := &apipb.EvaluationPlan{
 		Program:              program,
 		TimeLimitMs:          int32(version.TimeLimitMs),
-		MemLimitKb:           int32(version.MemoryLimitKb),
+		MemLimitMib:          int32(version.MemoryLimitMib),
 		ValidatorTimeLimitMs: 60_000,
-		ValidatorMemLimitKb:  1_000_000,
+		ValidatorMemLimitMib: 1024,
 	}
 	if version.Interactive {
 		evalPlan.PlanType = apipb.EvaluationType_INTERACTIVE
