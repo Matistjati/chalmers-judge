@@ -1,3 +1,6 @@
+#!/usr/bin/env bash
+# Stop if the build fails, rather than reinstalling the previous package.
+set -e
 set -v
 
 sudo ls > /dev/null

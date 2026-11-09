@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "npm run css ts",
-    "css-compile": "node-sass --include-path node_modules --output-style compressed --source-map true --source-map-contents true --precision 6 scss -o static/css/",
+    "css-compile": "sass --load-path=node_modules --style=compressed --source-map --embed-sources scss:static/css",
     "css-lint": "stylelint scss/",
     "css-prefix": "postcss --replace static/css/main.css --use autoprefixer --map",
     "css": "npm-run-all css-compile css-prefix",
@@ -20,11 +20,11 @@
   "devDependencies": {
     "@types/bootstrap": "^5.2.3",
     "autoprefixer": "^10.4.8",
-    "node-sass": "^7.0.1",
     "nodemon": "^2.0.19",
     "npm-run-all": "^4.1.5",
     "postcss": "^8.4.16",
     "postcss-cli": "^10.0.0",
+    "sass": "1.77.6",
     "serve": "^14.1.1",
     "stylelint": "^14.11.0",
     "stylelint-config-twbs-bootstrap": "^5.0.0",
