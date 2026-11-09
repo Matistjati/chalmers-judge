@@ -10,6 +10,7 @@ from omogenjudge.problems.lookup import contest_problems
 from omogenjudge.problems.testgroups import get_subtask_scores, get_submission_subtask_scores, \
     get_submission_subtask_groups
 from omogenjudge.storage.models import ContestProblem, Language, Problem, Submission, SubmissionGroupRun, Account, Contest
+from omogenjudge.submissions.feedback import SampleFeedback, get_sample_feedback
 from omogenjudge.submissions.lookup import get_submission_for_view
 from omogenjudge.util.django_types import OmogenRequest
 from omogenjudge.util.templates import render_template
@@ -35,6 +36,7 @@ class ViewArgs:
     submission_with_subtasks: SubmissionWithSubtasks
     language: str
     files: dict[str, str]
+    sample_feedback: List[SampleFeedback]
 
 
 @requires_user()
@@ -77,6 +79,7 @@ def view_contest_submission(request: OmogenRequest, contest: Contest, user: Acco
         author=submission.account,
         language=Language(submission.language).display(),
         files={file: base64.b64decode(content).decode('UTF-8', errors='ignore') for file, content in
-               submission.submission_files['files'].items()}
+               submission.submission_files['files'].items()},
+        sample_feedback=get_sample_feedback(submission.current_run),
     )
     return render_template(request, 'submissions/view_submission.html', args)

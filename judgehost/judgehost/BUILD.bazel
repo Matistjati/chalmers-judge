@@ -16,6 +16,8 @@ go_library(
         "@com_github_jsannemo_omogenexec//api",
         "@com_github_jsannemo_omogenexec//eval",
         "@com_github_jsannemo_omogenexec//util",
+        "@io_gorm_gorm//:gorm",
+        "@io_gorm_gorm//logger",
         "@org_golang_google_grpc//:go_default_library",
     ],
 )

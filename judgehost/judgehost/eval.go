@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/zip"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -10,6 +11,8 @@ import (
 	"github.com/jsannemo/omogenexec/eval"
 	"github.com/jsannemo/omogenexec/util"
 	"github.com/jsannemo/omogenhost/storage"
+	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -35,6 +38,65 @@ type includedCodeJson struct {
 }
 
 var evalMutex sync.Mutex
+
+const (
+	// The name of the test group containing the sample test cases of a problem.
+	sampleGroupName = "data/sample"
+	// How much of the output and error output of a submission that is stored for rejected sample
+	// test cases.
+	sampleFeedbackLimitBytes = 64 << 10
+	// How much of the validator message that is stored for rejected sample test cases.
+	maxValidatorMessageBytes = 8 << 10
+)
+
+// feedbackLimit returns how much of the outputs of a submission that should be captured for
+// rejected test cases in the given group. Only sample test cases get feedback, since it reveals
+// the test data.
+func feedbackLimit(group *storage.ProblemTestgroup, version *storage.ProblemVersion) int32 {
+	if group.TestgroupName == sampleGroupName && group.ParentId == version.RootGroupId && !version.Interactive {
+		return sampleFeedbackLimitBytes
+	}
+	return 0
+}
+
+// saveCaseFeedback stores the feedback of a rejected sample test case.
+//
+// Feedback is best effort: failures are only logged, since an error during evaluation would
+// stop the judging of the run (and of everything queued after it).
+func saveCaseFeedback(runId int64, sampleCases map[string]int64, result *apipb.Result) {
+	feedback := result.Feedback
+	testcaseId, found := sampleCases[feedback.CaseName]
+	if !found {
+		logger.Warningf("run %d: got feedback for unknown sample test case %q", runId, feedback.CaseName)
+		return
+	}
+	message := []byte(result.Message)
+	if len(message) > maxValidatorMessageBytes {
+		message = message[:maxValidatorMessageBytes]
+	}
+	row := storage.SubmissionCaseFeedback{
+		SubmissionRunId:     runId,
+		ProblemTestcaseId:   testcaseId,
+		TimeUsageMs:         result.TimeUsageMs,
+		Verdict:             toStorageVerdict(result.Verdict),
+		TeamOutput:          feedback.TeamOutput,
+		TeamOutputTruncated: feedback.TeamOutputTruncated,
+		TeamError:           feedback.TeamError,
+		TeamErrorTruncated:  feedback.TeamErrorTruncated,
+		ValidatorMessage:    message,
+	}
+	if result.Verdict == apipb.Verdict_RUN_TIME_ERROR {
+		if feedback.Signal != 0 {
+			row.ExitSignal = sql.NullInt32{Int32: feedback.Signal, Valid: true}
+		} else {
+			row.ExitCode = sql.NullInt32{Int32: feedback.ExitCode, Valid: true}
+		}
+	}
+	// Don't let the error include the row: it would put the output of the submission in the logs.
+	if res := storage.GormDB.Session(&gorm.Session{Logger: gormlogger.Discard}).Create(&row); res.Error != nil {
+		logger.Warningf("run %d: failed saving sample feedback for test case %q: %v", runId, feedback.CaseName, res.Error)
+	}
+}
 
 func toStorageVerdict(verdict apipb.Verdict) storage.Verdict {
 	switch verdict {
@@ -63,6 +125,10 @@ func evaluate(runId int64) error {
 	run.Status = storage.StatusCompiling
 	if res := storage.GormDB.Select("Status").Save(&run); res.Error != nil {
 		logger.Warningf("failed marking run as compiling: %v", res.Error)
+	}
+	// If the run is being rejudged, feedback from the earlier attempt must not linger.
+	if res := storage.GormDB.Where("submission_run_id = ?", runId).Delete(&storage.SubmissionCaseFeedback{}); res.Error != nil {
+		logger.Warningf("failed clearing old sample feedback: %v", res.Error)
 	}
 	lang, ok := langMap[run.Submission.Language]
 	if !ok {
@@ -131,9 +197,16 @@ func evaluate(runId int64) error {
 		return fmt.Errorf("failed gathering testdata: %v", res.Error)
 	}
 	subgroupMap := make(map[int64][]*storage.ProblemTestgroup)
+	// Feedback is matched to test cases by name rather than by the order of the results.
+	sampleCases := make(map[string]int64)
 	for _, group := range groups {
 		if group.ProblemTestgroupId == run.ProblemVersion.RootGroupId {
 			run.ProblemVersion.RootGroup = group
+		}
+		if feedbackLimit(group, &run.ProblemVersion) > 0 {
+			for _, testcase := range group.ProblemTestcases {
+				sampleCases[testcase.TestcaseName] = testcase.ProblemTestcaseId
+			}
 		}
 		if group.ParentId != 0 {
 			subgroupMap[group.ParentId] = append(subgroupMap[group.ParentId], group)
@@ -158,6 +231,9 @@ func evaluate(runId int64) error {
 		groupIdx = append(groupIdx, 0)
 
 		for result := range resultChan {
+			if result.Feedback != nil {
+				saveCaseFeedback(run.SubmissionRunId, sampleCases, result)
+			}
 			for {
 				curIdx := len(groupStack) - 1
 				curGroup := groupStack[curIdx]
@@ -279,7 +355,7 @@ func makeEvalPlan(program *apipb.CompiledProgram, version storage.ProblemVersion
 
 	apigroups := make(map[int64]*apipb.TestGroup)
 	for _, group := range groups {
-		apigroup, err := toGroup(group)
+		apigroup, err := toGroup(group, feedbackLimit(&group, &version))
 		if err != nil {
 			return nil, fmt.Errorf("failed loading test group %d: %v", group.TestgroupName, err)
 		}
@@ -374,7 +450,7 @@ func toApiVerdictMode(verdictMode string) (apipb.VerdictMode, error) {
 	return apipb.VerdictMode_VERDICT_MODE_UNSPECIFIED, fmt.Errorf("unknown verdict mode: %s", verdictMode)
 }
 
-func toGroup(testgroup storage.ProblemTestgroup) (*apipb.TestGroup, error) {
+func toGroup(testgroup storage.ProblemTestgroup, feedbackLimitBytes int32) (*apipb.TestGroup, error) {
 	scoringMode, err := toApiScoringMode(testgroup.ScoringMode)
 	if err != nil {
 		return nil, err
@@ -402,9 +478,10 @@ func toGroup(testgroup storage.ProblemTestgroup) (*apipb.TestGroup, error) {
 		inpath, hasin := findPath(testcase.InputFileHash)
 		outpath, hasout := findPath(testcase.OutputFileHash)
 		group.Cases = append(group.Cases, &apipb.TestCase{
-			Name:       testcase.TestcaseName,
-			InputPath:  inpath,
-			OutputPath: outpath,
+			Name:               testcase.TestcaseName,
+			InputPath:          inpath,
+			OutputPath:         outpath,
+			FeedbackLimitBytes: feedbackLimitBytes,
 		})
 		if !hasin {
 			missingFiles = append(missingFiles, testcase.InputFileHash)

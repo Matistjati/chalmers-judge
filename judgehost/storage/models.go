@@ -112,6 +112,27 @@ type SubmissionCaseRun struct {
 	Verdict             Verdict
 }
 
+// SubmissionCaseFeedback contains details about a rejected run on a sample test case, which are
+// displayed to the submitter.
+type SubmissionCaseFeedback struct {
+	SubmissionCaseFeedbackId int64 `gorm:"primaryKey"`
+	SubmissionRunId          int64
+	ProblemTestcaseId        int64
+	DateCreated              time.Time `gorm:"autoCreateTime"`
+	TimeUsageMs              int64
+	Verdict                  Verdict
+	// The outputs are binary since submissions can output anything, including things that are
+	// not valid in a text column. The same goes for the validator message, since it may quote
+	// the output.
+	TeamOutput          []byte `gorm:"type:bytea"`
+	TeamOutputTruncated bool
+	TeamError           []byte `gorm:"type:bytea"`
+	TeamErrorTruncated  bool
+	ValidatorMessage    []byte `gorm:"type:bytea"`
+	ExitCode            sql.NullInt32
+	ExitSignal          sql.NullInt32
+}
+
 type SubmissionGroupRun struct {
 	SubmissionGroupRunId int64 `gorm:"primaryKey"`
 	SubmissionRunId      int64

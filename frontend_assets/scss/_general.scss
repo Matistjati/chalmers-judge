@@ -1,3 +1,12 @@
 body {
   overflow-y: scroll;
 }
+
+// Feedback on rejected sample test cases, displayed on the submission page.
+.sample-feedback pre {
+  max-height: 24rem;
+  overflow: auto;
+  padding: 0.5rem;
+  border: 1px solid $gray-300;
+  background-color: $gray-100;
+}

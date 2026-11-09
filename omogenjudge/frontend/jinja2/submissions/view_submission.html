@@ -17,6 +17,18 @@
     </script>
 {% endblock %}
 
+{% macro feedback_text(title, feedback) %}
+    <h6 class="mt-3 mb-1">{{ title }}</h6>
+    {% if feedback.text %}
+        <pre class="m-0"><code class="nohighlight">{{ feedback.text }}</code></pre>
+    {% else %}
+        <span class="text-muted">(empty)</span>
+    {% endif %}
+    {% if feedback.truncated %}
+        <span class="text-muted">(truncated, only the beginning is shown)</span>
+    {% endif %}
+{% endmacro %}
+
 {% set submission = submission_with_subtasks.submission %}
 {% set problem = problem_with_scores.problem %}
 
@@ -126,10 +138,52 @@
                     <div class="card-body">
                         <pre class="m-0"><code
                                 class="nohighlight">{{ submission.current_run.compile_error }}</code></pre>
-                        </td>
                     </div>
                 </div>
             {% endif %}
+            {% for feedback in sample_feedback %}
+                <div class="card mt-3 sample-feedback">
+                    <div class="card-header bg-dark text-light d-flex justify-content-between align-items-center">
+                        <span>Sample test case {{ feedback.testcase_name }}</span>
+                        {{ submissionhelpers.verdict_badge(feedback.verdict) }}
+                    </div>
+                    <div class="card-body">
+                        {% if feedback.verdict == Verdict.RTE %}
+                            {% if feedback.exit_signal != None %}
+                                <p class="mb-0">
+                                    Your program was killed by signal {{ feedback.exit_signal }}
+                                    {%- if feedback.exit_signal_name %} ({{ feedback.exit_signal_name }}){% endif %}.
+                                    {% if feedback.exit_signal == 9 %}
+                                        This often means that it exceeded the memory limit.
+                                    {% endif %}
+                                </p>
+                            {% elif feedback.exit_code != None %}
+                                <p class="mb-0">Your program exited with exit code {{ feedback.exit_code }}.</p>
+                            {% endif %}
+                        {% elif feedback.verdict == Verdict.TLE %}
+                            <p class="mb-0">
+                                Your program was stopped when it exceeded the time limit, so its output may be
+                                incomplete.
+                            </p>
+                        {% endif %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ feedback_text('Input', feedback.input) }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ feedback_text("Judge's answer", feedback.answer) }}
+                            </div>
+                        </div>
+                        {{ feedback_text('Your output', feedback.output) }}
+                        {% if feedback.message.text %}
+                            {{ feedback_text('Judge message', feedback.message) }}
+                        {% endif %}
+                        {% if feedback.error.text or feedback.verdict == Verdict.RTE %}
+                            {{ feedback_text('Your error output (stderr)', feedback.error) }}
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
             {% for file, content in files.items() %}
                 <div class="card mt-3">
                     <div class="card-header bg-dark text-light">

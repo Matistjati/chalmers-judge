@@ -88,6 +88,32 @@ class SubmissionCaseRun(models.Model):
         db_table = 'submission_case_run'
 
 
+class SubmissionCaseFeedback(models.Model):
+    """Details about a rejected run on a sample test case, which are shown to the submitter.
+
+    Written by the judgehost, and only for sample test cases since it reveals the test data.
+    """
+    submission_case_feedback_id = models.AutoField(primary_key=True)
+    submission_run = models.ForeignKey(SubmissionRun, models.CASCADE, related_name='case_feedback')
+    problem_testcase = models.ForeignKey(ProblemTestcase, models.RESTRICT, related_name='+')
+    date_created = models.DateTimeField()
+    time_usage_ms = models.IntegerField()
+    verdict = EnumField(enum_type=Verdict)
+    # Submissions can output anything, so the outputs are stored as bytes rather than as text.
+    # The same goes for the validator message since it may quote the output.
+    team_output = models.BinaryField(null=True, blank=True)
+    team_output_truncated = models.BooleanField(default=False)
+    team_error = models.BinaryField(null=True, blank=True)
+    team_error_truncated = models.BooleanField(default=False)
+    validator_message = models.BinaryField(null=True, blank=True)
+    # Only set for run-time errors, and then exactly one of them.
+    exit_code = models.IntegerField(null=True, blank=True)
+    exit_signal = models.IntegerField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'submission_case_feedback'
+
+
 class SubmissionGroupRun(models.Model):
     submission_group_run_id = models.AutoField(primary_key=True)
     submission_run = models.ForeignKey(SubmissionRun, models.CASCADE, related_name='group_runs')

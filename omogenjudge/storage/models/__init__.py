@@ -9,7 +9,7 @@ from omogenjudge.storage.models.problems import ProblemTestgroup, ProblemTestcas
 from omogenjudge.storage.models.contests import ContestProblem, ContestGroupContest, Contest, ContestGroup, \
     ContestStaff, ScoringType
 from omogenjudge.storage.models.submissions import SubmissionGroupRun, Submission, SubmissionRun, SubmissionCaseRun, \
-    SubmissionFiles, Status, Verdict
+    SubmissionCaseFeedback, SubmissionFiles, Status, Verdict
 from omogenjudge.storage.models.teams import TeamMember, Team
 
 
