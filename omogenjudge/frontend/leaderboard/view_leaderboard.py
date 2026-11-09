@@ -18,6 +18,9 @@ from omogenjudge.storage.models import (
 from omogenjudge.util.django_types import OmogenRequest
 from omogenjudge.util.templates import render_template
 
+# Users who have solved fewer problems than this are not listed.
+MIN_SOLVED_TO_LIST = 5
+
 
 @dataclasses.dataclass
 class LeaderboardRow:
@@ -25,6 +28,8 @@ class LeaderboardRow:
     username: str
     full_name: str
     solved: int
+    # Whether this is the row of the user viewing the leaderboard.
+    is_me: bool = False
 
 
 @dataclasses.dataclass
@@ -32,6 +37,8 @@ class LeaderboardArgs:
     rows: List[LeaderboardRow]
     total_problems: int
     has_hidden: bool
+    min_solved: int
+    my_row: Optional[LeaderboardRow] = None
 
 
 def _visible_problem_ids() -> Tuple[Set[int], Dict[int, float]]:
@@ -96,7 +103,7 @@ def view_leaderboard(request: OmogenRequest) -> HttpResponse:
                 continue
             if best >= max_score:
                 solved_count += 1
-        if solved_count >= 5:
+        if solved_count >= MIN_SOLVED_TO_LIST:
             solves_by_user[uid] = solved_count
         elif solved_count > 0:
             has_hidden = True
@@ -111,7 +118,9 @@ def view_leaderboard(request: OmogenRequest) -> HttpResponse:
         key=lambda kv: (-kv[1], accounts_by_id[kv[0]].username.lower()),
     )
 
+    my_account_id = request.user.account_id if request.user.is_authenticated else None
     rows: List[LeaderboardRow] = []
+    my_row: Optional[LeaderboardRow] = None
     prev_solved: Optional[int] = None
     prev_rank = 0
     for idx, (uid, solved) in enumerate(ordered, start=1):
@@ -119,12 +128,16 @@ def view_leaderboard(request: OmogenRequest) -> HttpResponse:
         if solved != prev_solved:
             prev_rank = idx
             prev_solved = solved
-        rows.append(LeaderboardRow(
+        row = LeaderboardRow(
             rank=prev_rank,
             username=account.username,
             full_name=account.full_name,
             solved=solved,
-        ))
+            is_me=uid == my_account_id,
+        )
+        if row.is_me:
+            my_row = row
+        rows.append(row)
 
     return render_template(
         request,
@@ -133,5 +146,7 @@ def view_leaderboard(request: OmogenRequest) -> HttpResponse:
             rows=rows,
             total_problems=len(problem_ids),
             has_hidden=has_hidden,
+            min_solved=MIN_SOLVED_TO_LIST,
+            my_row=my_row,
         ),
     )

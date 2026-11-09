@@ -1,0 +1,304 @@
+// The pages that are a single list in a table: the problem list and the leaderboard.
+
+$status-solved-color: #17663a;
+$status-solved-bg: #dcf3e3;
+$status-attempted-color: #a12b22;
+$status-attempted-bg: #fbe4e1;
+
+// Title of the page to the left, the viewer's own summary to the right.
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem 2rem;
+  margin-bottom: 1.25rem;
+
+  h1 {
+    margin-bottom: 0.15rem;
+    font-weight: 600;
+  }
+
+  p {
+    margin-bottom: 0;
+    color: $gray-600;
+  }
+}
+
+.page-header-stat {
+  display: block;
+  min-width: 14rem;
+  color: $gray-700;
+  text-align: right;
+  text-decoration: none;
+
+  strong {
+    color: $gray-900;
+    font-size: 1.15rem;
+  }
+
+  .progress {
+    margin-top: 0.35rem;
+  }
+}
+
+a.page-header-stat:hover {
+  color: $gray-700;
+
+  .page-header-stat-value {
+    text-decoration: underline;
+  }
+}
+
+.progress-thin {
+  height: 0.5rem;
+  border-radius: 1rem;
+}
+
+.table-card {
+  overflow-x: auto;
+  border: 1px solid $gray-300;
+  border-radius: $border-radius-lg;
+  background-color: $white;
+  box-shadow: 0 1px 2px rgba($black, 0.04), 0 4px 14px rgba($black, 0.04);
+
+  > .table {
+    margin-bottom: 0;
+    font-variant-numeric: tabular-nums;
+
+    > :not(caption) > * > * {
+      // The height keeps rows the same size whether or not they hold a pill or a medal.
+      height: 3.1rem;
+      padding: 0.4rem 1.1rem;
+      vertical-align: middle;
+      border-bottom-color: $gray-200;
+    }
+
+    > thead > tr > th {
+      height: auto;
+      padding-top: 0.6rem;
+      padding-bottom: 0.6rem;
+      border-bottom-color: $gray-300;
+      background-color: $gray-100;
+      color: $gray-600;
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    > tbody > tr:last-child > * {
+      border-bottom-width: 0;
+    }
+
+    > tbody > tr:hover > * {
+      background-color: rgba($primary, 0.04);
+    }
+  }
+
+  a {
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.table-card-footer {
+  padding: 0.6rem 1.1rem;
+  border-top: 1px solid $gray-300;
+  background-color: $gray-100;
+  color: $gray-600;
+  font-size: 0.8rem;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.65rem 0.2rem 0.5rem;
+  border-radius: 1rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-solved {
+  background-color: $status-solved-bg;
+  color: $status-solved-color;
+}
+
+.status-attempted {
+  background-color: $status-attempted-bg;
+  color: $status-attempted-color;
+}
+
+// Problem list.
+
+.problem-list {
+  // A stripe along the left edge tells the state of a row at a glance.
+  > tbody > tr.is-solved > :first-child {
+    box-shadow: inset 3px 0 0 $success;
+  }
+
+  > tbody > tr.is-attempted > :first-child {
+    box-shadow: inset 3px 0 0 $danger;
+  }
+
+  // --pct is the share of the maximum score, which goes from red (0) to green (100).
+  > tbody > tr.is-partial > :first-child {
+    box-shadow: inset 3px 0 0 hsl(calc(var(--pct) * 1.2), 65%, 45%);
+  }
+
+  .problem-name {
+    color: $gray-900;
+    font-weight: 700;
+
+    &:hover {
+      color: $primary;
+    }
+  }
+
+  .problem-contest {
+    color: $gray-600;
+
+    a {
+      color: inherit;
+
+      &:hover {
+        color: $primary;
+      }
+    }
+  }
+
+  div.problem-contest {
+    margin-top: 0.1rem;
+    font-size: 0.8rem;
+  }
+
+  .problem-label {
+    display: inline-block;
+    min-width: 1.5rem;
+    margin-left: 0.35rem;
+    padding: 0.05rem 0.35rem;
+    border-radius: $border-radius-sm;
+    background-color: rgba($primary, 0.1);
+    color: $primary;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .problem-status {
+    width: 11rem;
+    text-align: right;
+  }
+
+  .score-progress {
+    display: inline-block;
+    min-width: 6.5rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    white-space: nowrap;
+
+    .progress {
+      margin-top: 0.2rem;
+    }
+
+    .progress-bar {
+      width: calc(var(--pct) * 1%);
+      background-color: hsl(calc(var(--pct) * 1.2), 65%, 45%);
+    }
+  }
+}
+
+// Leaderboard.
+
+.leaderboard {
+  .leaderboard-rank {
+    width: 5rem;
+    text-align: center;
+  }
+
+  .leaderboard-solved {
+    width: 42%;
+  }
+
+  .rank {
+    display: inline-block;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 50%;
+    color: $gray-600;
+    font-weight: 700;
+    line-height: 1.9rem;
+  }
+
+  .rank-medal {
+    box-shadow: inset 0 0 0 1px rgba($black, 0.08), 0 1px 2px rgba($black, 0.15);
+  }
+
+  .rank-1 {
+    background: linear-gradient(135deg, #f8dc7a, $secondary);
+    color: #4d3a00;
+  }
+
+  .rank-2 {
+    background: linear-gradient(135deg, #eef0f3, #b7bec7);
+    color: #353c45;
+  }
+
+  .rank-3 {
+    background: linear-gradient(135deg, #efc59c, #c8894e);
+    color: #4a2a0c;
+  }
+
+  .is-top .leaderboard-name {
+    font-weight: 700;
+  }
+
+  .solved-meter {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+
+    .progress {
+      flex: 1 1 auto;
+    }
+  }
+
+  .solved-count {
+    min-width: 2rem;
+    font-weight: 700;
+    text-align: right;
+  }
+
+  > tbody > tr.is-me > * {
+    background-color: rgba($primary, 0.08);
+  }
+
+  > tbody > tr.is-me > :first-child {
+    box-shadow: inset 3px 0 0 $primary;
+  }
+}
+
+@include media-breakpoint-down(md) {
+  .page-header-stat {
+    flex: 1 1 100%;
+    text-align: left;
+  }
+
+  .table-card > .table > :not(caption) > * > * {
+    padding-right: 0.75rem;
+    padding-left: 0.75rem;
+  }
+
+  .problem-list .problem-status {
+    width: 1%;
+  }
+
+  .leaderboard .leaderboard-rank {
+    width: 3.5rem;
+  }
+}

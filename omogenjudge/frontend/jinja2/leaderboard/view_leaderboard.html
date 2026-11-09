@@ -6,39 +6,67 @@
 {% block content %}
 <div class="row">
     <div class="col-lg-12">
-        <h1>Leaderboard</h1>
-        <p class="text-muted">Solves across {{ total_problems }} archive problem{{ 's' if total_problems != 1 else '' }}.</p>
-        <table class="table table-bordered">
-            <thead>
-            <tr>
-                <th style="width: 4em" class="text-center">Rank</th>
-                <th>User</th>
-                <th class="text-center" style="width: 8em">Solved</th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for row in rows %}
-                <tr>
-                    <td class="text-center align-middle">{{ row.rank }}</td>
-                    <td class="align-middle">
-                        {{ row.full_name or row.username }}
-                    </td>
-                    <td class="text-center align-middle">{{ row.solved }}</td>
-                </tr>
-            {% else %}
-                <tr>
-                    <td colspan="3" class="text-center text-muted">No solves yet.</td>
-                </tr>
-            {% endfor %}
-            {% if has_hidden %}
-                <tr>
-                    <td class="text-center text-muted">…</td>
-                    <td class="text-muted">…</td>
-                    <td class="text-center text-muted">…</td>
-                </tr>
+        <div class="page-header">
+            <div>
+                <h1>Leaderboard</h1>
+                <p>Problems solved, out of the {{ total_problems }} problem{{ 's' if total_problems != 1 else '' }} in the contest archive.</p>
+            </div>
+            {% if my_row %}
+                <a class="page-header-stat" href="#leaderboard-me">
+                    <div>Your rank</div>
+                    <div class="page-header-stat-value">
+                        <strong>#{{ my_row.rank }}</strong> · {{ my_row.solved }} solved
+                    </div>
+                </a>
             {% endif %}
-            </tbody>
-        </table>
+        </div>
+        <div class="table-card">
+            <table class="table leaderboard">
+                <thead>
+                <tr>
+                    <th class="leaderboard-rank">Rank</th>
+                    <th>User</th>
+                    <th class="leaderboard-solved">Solved</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for row in rows %}
+                    {% set solved_pct = ([100, row.solved / total_problems * 100] | min) | round | int if total_problems else 0 %}
+                    <tr class="{{ 'is-top' if row.rank <= 3 }} {{ 'is-me' if row.is_me }}"
+                        {% if row.is_me %}id="leaderboard-me"{% endif %}>
+                        <td class="leaderboard-rank">
+                            <span class="rank {{ 'rank-medal rank-' ~ row.rank if row.rank <= 3 }}">{{ row.rank }}</span>
+                        </td>
+                        <td>
+                            <span class="leaderboard-name">{{ row.full_name or row.username }}</span>
+                            {% if row.is_me %}
+                                <span class="badge bg-primary ms-1">You</span>
+                            {% endif %}
+                        </td>
+                        <td class="leaderboard-solved">
+                            <div class="solved-meter">
+                                <div class="progress progress-thin" role="progressbar" aria-label="Problems solved"
+                                     aria-valuenow="{{ row.solved }}" aria-valuemin="0"
+                                     aria-valuemax="{{ total_problems }}">
+                                    <div class="progress-bar" style="width: {{ solved_pct }}%"></div>
+                                </div>
+                                <span class="solved-count">{{ row.solved }}</span>
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="3" class="text-center text-muted">No solves yet.</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% if has_hidden %}
+                <div class="table-card-footer">
+                    Users who have solved fewer than {{ min_solved }} problems are not listed.
+                </div>
+            {% endif %}
+        </div>
     </div>
 </div>
 {% endblock %}

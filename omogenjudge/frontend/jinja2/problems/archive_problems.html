@@ -5,54 +5,90 @@
 {% set active_page = 'problems' %}
 {% block title %}Problems{% endblock %}
 
+{% macro contest_ref(row) %}
+    <a href="{{ url('contest-problems', row.contest_short_name) }}">{{ row.contest_title }}</a>
+    {% if row.contest_label %}
+        <span class="problem-label">{{ row.contest_label }}</span>
+    {% endif %}
+{% endmacro %}
+
 {% block content %}
 <div class="row">
     <div class="col-lg-12">
-        <table class="table table-bordered">
-            <thead>
-            <tr>
-                <th>Name</th>
-                <th>Contest</th>
-                {% if show_progress %}
-                    <th class="text-center" style="width: 0; white-space: nowrap">Status</th>
-                {% endif %}
-            </tr>
-            </thead>
-            <tbody>
-            {% for row in rows %}
+        <div class="page-header">
+            <div>
+                <h1>Problems</h1>
+                <p>{{ rows | length }} problem{{ 's' if rows | length != 1 else '' }} from the contest archive.</p>
+            </div>
+            {% if show_progress and rows %}
+                {% set solved_pct = (solved_count / (rows | length) * 100) | round | int %}
+                <div class="page-header-stat">
+                    <div><strong>{{ solved_count }}</strong> of {{ rows | length }} solved</div>
+                    <div class="progress progress-thin" role="progressbar" aria-label="Problems solved"
+                         aria-valuenow="{{ solved_pct }}" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar bg-success" style="width: {{ solved_pct }}%"></div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        <div class="table-card">
+            <table class="table problem-list">
+                <thead>
                 <tr>
-                    <td class="align-middle">
-                        <a href="{{ url('contest-problem', row.contest_short_name, row.problem.short_name) }}">{{ problemhelpers.problem_title(row.problem) }}</a>
-                    </td>
-                    <td class="align-middle">
-                        <a href="{{ url('contest-problems', row.contest_short_name) }}">{{ row.contest_title }}</a>
-                        {% if row.contest_label %}
-                            <span class="badge bg-primary ms-1">{{ row.contest_label }}</span>
-                        {% endif %}
-                    </td>
+                    <th>Name</th>
+                    <th class="d-none d-md-table-cell">Contest</th>
                     {% if show_progress %}
-                        <td class="align-middle text-center">
-                            {% if row.solved %}
-                                <span class="badge rounded-pill"
-                                      style="background-color: {{ progress_hsl(100) }}; color: #000;">Solved</span>
-                            {% elif row.best_score is not none and row.max_score > 0 %}
-                                {% set pct = (row.best_score / row.max_score * 100) %}
-                                <span class="badge rounded-pill"
-                                      style="background-color: {{ progress_hsl(pct) }}; color: #000;">
-                                    {{ formatting.format_score(row.best_score) }} / {{ formatting.format_score(row.max_score) }}
-                                </span>
-                            {% elif row.best_score is not none %}
-                                <span class="badge rounded-pill"
-                                      style="background-color: {{ progress_hsl(0) }}; color: #000;">Attempted</span>
-                            {% else %}
-                                <span class="text-muted">—</span>
-                            {% endif %}
-                        </td>
+                        <th class="problem-status">Status</th>
                     {% endif %}
                 </tr>
-            {% endfor %}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                {% for row in rows %}
+                    {% set partial = not row.solved and row.best_score is not none and row.max_score > 0 %}
+                    {% set attempted = not row.solved and not partial and row.best_score is not none %}
+                    {% if partial %}
+                        {% set pct = ([0, [100, row.best_score / row.max_score * 100] | min] | max) | round | int %}
+                    {% endif %}
+                    <tr class="{{ 'is-solved' if row.solved }}{{ 'is-partial' if partial }}{{ 'is-attempted' if attempted }}"
+                        {% if partial %}style="--pct: {{ pct }}"{% endif %}>
+                        <td>
+                            <a class="problem-name"
+                               href="{{ url('contest-problem', row.contest_short_name, row.problem.short_name) }}">{{ problemhelpers.problem_title(row.problem) }}</a>
+                            <div class="problem-contest d-md-none">{{ contest_ref(row) }}</div>
+                        </td>
+                        <td class="problem-contest d-none d-md-table-cell">{{ contest_ref(row) }}</td>
+                        {% if show_progress %}
+                            <td class="problem-status">
+                                {% if row.solved %}
+                                    <span class="status-pill status-solved">
+                                        <i class="bi bi-check-circle-fill" aria-hidden="true"></i>Solved
+                                    </span>
+                                {% elif partial %}
+                                    <div class="score-progress">
+                                        <span>
+                                            {{ formatting.format_score(row.best_score) }} / {{ formatting.format_score(row.max_score) }}
+                                        </span>
+                                        <div class="progress progress-thin" role="progressbar" aria-label="Score"
+                                             aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100">
+                                            <div class="progress-bar"></div>
+                                        </div>
+                                    </div>
+                                {% elif attempted %}
+                                    <span class="status-pill status-attempted">
+                                        <i class="bi bi-dash-circle-fill" aria-hidden="true"></i>Attempted
+                                    </span>
+                                {% endif %}
+                            </td>
+                        {% endif %}
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="3" class="text-center text-muted">No problems yet.</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 {% endblock %}

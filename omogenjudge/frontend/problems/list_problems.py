@@ -63,6 +63,7 @@ class ArchiveProblemRow:
 class ArchiveProblemsArgs:
     rows: List[ArchiveProblemRow]
     show_progress: bool
+    solved_count: int
 
 
 def list_archive_problems(request: OmogenRequest) -> HttpResponse:
@@ -121,4 +122,5 @@ def list_archive_problems(request: OmogenRequest) -> HttpResponse:
     rows.sort(key=lambda r: (r.contest_title, r.contest_label, r.problem.short_name))
 
     return render_template(request, 'problems/archive_problems.html',
-                           ArchiveProblemsArgs(rows=rows, show_progress=show_progress))
+                           ArchiveProblemsArgs(rows=rows, show_progress=show_progress,
+                                               solved_count=sum(1 for row in rows if row.solved)))
