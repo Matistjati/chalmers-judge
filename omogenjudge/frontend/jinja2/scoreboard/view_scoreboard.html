@@ -63,8 +63,11 @@
                                         {% if contest.scoring_type == 'scoring' %}
                                     data-bs-toggle="tooltip" data-bs-placement="right"
                                     title="The time of the last submission that increased a participant's score (minute granularity)"
+                                        {% elif scoreboard.icpc_style %}
+                                    data-bs-toggle="tooltip" data-bs-placement="right"
+                                    title="Minutes: for each solved problem, the solve time plus {{ contest.try_penalty }} per rejected try"
                                         {% endif %}
-                                >Tiebreak
+                                >{{ 'Penalty' if scoreboard.icpc_style else 'Tiebreak' }}
                                 </th>
                             {% endif %}
                             {% if contest.count_shots %}
@@ -123,6 +126,31 @@
                                             {% else %}
                                                 {{ formatting.format_score(res.problem_score) }}
                                                 {{ submissionhelpers.subtask_bubbles(res.subtask_scores, scoreboard_problem.subtask_scores) }}
+                                            {% endif %}
+                                        {% elif scoreboard.icpc_style %}
+                                            {% if res.accepted %}
+                                                <span class="text-success">
+                                                {{ res.solve_time if res.solve_time is not none else '+' }}
+                                                <div style="font-size: 0.7rem">
+                                                    {{ res.tries }} {{ 'try' if res.tries == 1 else 'tries' }}
+                                                </div>
+                                            </span>
+                                            {% elif res.pending %}
+                                                <span style="color: var(--bs-purple)">
+                                                ?
+                                                <div style="font-size: 0.7rem">
+                                                    {{ res.tries + res.pending }} {{ 'try' if res.tries + res.pending == 1 else 'tries' }}
+                                                </div>
+                                            </span>
+                                            {% elif res.tries %}
+                                                <span class="text-danger">
+                                                &minus;
+                                                <div style="font-size: 0.7rem">
+                                                    {{ res.tries }} {{ 'try' if res.tries == 1 else 'tries' }}
+                                                </div>
+                                            </span>
+                                            {% else %}
+                                                .
                                             {% endif %}
                                         {% else %}
                                             {% if res.problem_score > 0 %}

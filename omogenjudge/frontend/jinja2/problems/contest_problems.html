@@ -51,7 +51,11 @@
                 </td>
                 {% elif team_problem_res != None %}
                 <td class="align-middle">
-                    {% if team_problem_res.problem_score > 0 %}
+                    {% if scoreboard.icpc_style and team_problem_res.accepted %}
+                    <span class="text-success">
+                                {% if team_problem_res.solve_time is not none %}{{ team_problem_res.solve_time }}&nbsp;min,&nbsp;{% endif %}{{ team_problem_res.tries }}&nbsp;{{ 'try' if team_problem_res.tries == 1 else 'tries' }}
+                            </span>
+                    {% elif team_problem_res.problem_score > 0 %}
                     <span class="text-success">
                                 +{{ team_problem_res.tries }}&nbsp;({{ scoreboard.format_tiebreak(team_problem_res.tiebreak) }})
                             </span>

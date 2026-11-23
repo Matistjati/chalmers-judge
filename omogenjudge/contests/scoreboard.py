@@ -21,6 +21,8 @@ class ProblemResult:
     problem_score: float = 0
     subtask_scores: list[float] = dataclasses.field(default_factory=list)
     tiebreak: float = 0
+    # Minutes from start to the first accepted submission, without penalty (ICPC scoreboards only).
+    solve_time: Optional[int] = None
     # Every submission made, regardless of status; used for the shots counter. Excluded
     # from equality since _process_team compares contest and upsolve results to decide
     # whether to emit an upsolve row.
@@ -192,6 +194,9 @@ class ScoreboardMaker:
     @property
     def has_penalty(self):
         return NotImplementedError
+
+    # ICPC-style scoreboard: cells show solve minute and number of tries, total is penalty minutes.
+    icpc_style = False
 
 
 def _subtask_runs(group_runs: List[SubmissionGroupRun], subtasks: int):
@@ -528,14 +533,25 @@ class BinaryWithPenalty(ScoreboardMaker):
                 problem_result.problem_score += 1
                 if start_time:
                     seconds = math.floor((sub.date_created - start_time).total_seconds())
-                    problem_result.tiebreak = failures * self.contest.try_penalty + seconds // 60
+                    problem_result.solve_time = seconds // 60
+                    problem_result.tiebreak = failures * self.contest.try_penalty + problem_result.solve_time
             else:
                 failures += 1
         return problem_result
 
+    def _team_sort_key(self, team: ScoreboardTeam):
+        # ICPC rules: solved, then penalty, then earliest time of the last accepted submission.
+        last_solve = max((res.solve_time for res in team.results if res.solve_time is not None), default=0)
+        return -team.total_score, team.tiebreak, last_solve
+
+    def format_tiebreak(self, minutes: float) -> str:
+        return str(int(minutes))
+
     @property
     def has_penalty(self):
         return True
+
+    icpc_style = True
 
 
 _SCOREBOARDS: Dict[ScoringType, Type[ScoreboardMaker]] = {
