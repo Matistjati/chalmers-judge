@@ -1,17 +1,57 @@
 import dataclasses
 import datetime
 import math
-from typing import Dict, List, Optional, Type
+from typing import Dict, List, Optional, Type, Union
 
 from django.utils import timezone
 
 from omogenjudge.problems.lookup import contest_problems_with_grading
 from omogenjudge.problems.testgroups import get_submission_subtask_scores, get_subtask_scores, get_subtasks, get_submission_subtask_groups
-from omogenjudge.storage.models import Contest, ContestProblem, ScoringType, Status, Submission, SubmissionGroupRun, \
-    Team, Verdict
+from omogenjudge.storage.models import Contest, ContestProblem, ImportedSubmission, ImportedTeam, ScoringType, Status, \
+    Submission, SubmissionGroupRun, Team, Verdict
 from omogenjudge.submissions.lookup import list_queue_submissions
 from omogenjudge.teams.lookup import contest_teams
 import base64
+
+# Imported teams have no contest start; their submission times are offsets from this fixed instant. It lies far
+# enough in the past that they never count as running virtual contests.
+_IMPORTED_START = datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)
+
+
+class _NoMembers:
+    def all(self) -> list:
+        return []
+
+
+@dataclasses.dataclass(frozen=True)
+class _ImportedRun:
+    verdict: Verdict
+    status: Status = Status.DONE
+
+
+@dataclasses.dataclass(frozen=True)
+class _ImportedSubmissionEntry:
+    """Stands in for a Submission so imported results go through the same scoring code."""
+    problem_id: int
+    date_created: datetime.datetime
+    current_run: _ImportedRun
+
+
+@dataclasses.dataclass(eq=False)
+class ImportedTeamEntry:
+    """Stands in for a Team on the scoreboard for a team imported from another judge."""
+    imported_team: ImportedTeam
+    submissions: List[_ImportedSubmissionEntry]
+    contest_start_time: datetime.datetime = _IMPORTED_START
+    practice: bool = False
+    teammember_set: _NoMembers = dataclasses.field(default_factory=_NoMembers)
+
+    def display_name(self) -> str:
+        return self.imported_team.display_name()
+
+
+AnyTeam = Union[Team, ImportedTeamEntry]
+
 
 @dataclasses.dataclass
 class ProblemResult:
@@ -37,7 +77,7 @@ class TeamResult:
 
 @dataclasses.dataclass
 class ScoreboardTeam:
-    team: Team
+    team: AnyTeam
     rank: int = 0
     total_score: float = 0
     total_submissions: int = 0
@@ -46,6 +86,8 @@ class ScoreboardTeam:
     virtual: bool = False
     virtual_time: Optional[datetime.timedelta] = None
     practice: bool = False
+    # Set for teams imported from another judge: the label to show next to the name.
+    imported_source: Optional[str] = None
 
 
 @dataclasses.dataclass
@@ -58,7 +100,7 @@ class ScoreboardProblem:
 
 
 class ScoreboardMaker:
-    def __init__(self, contest, problems: List[ContestProblem], teams: List[Team], *,
+    def __init__(self, contest, problems: List[ContestProblem], teams: List[AnyTeam], *,
                  now: datetime.datetime,
                  at_time: Optional[datetime.timedelta] = None,
                  tiebreak=sum):
@@ -84,11 +126,15 @@ class ScoreboardMaker:
 
     def process_submissions(self, submissions: List[Submission]):
         account_to_team = {tm.account_id: team for team in self.teams for tm in team.teammember_set.all()}
-        team_problem_submissions: Dict[Team, Dict[int, List[Submission]]] = {
+        team_problem_submissions: Dict[AnyTeam, Dict[int, list]] = {
             team: {problem.problem_id: [] for problem in self.problems} for team in
             self.teams}
         for s in submissions:
             team_problem_submissions[account_to_team[s.account_id]][s.problem_id].append(s)
+        for team in self.teams:
+            if isinstance(team, ImportedTeamEntry):
+                for imported in team.submissions:
+                    team_problem_submissions[team][imported.problem_id].append(imported)
 
         self.scoreboard_teams = [t for team in self.teams for t in
                                  self._process_team(team, team_problem_submissions[team])]
@@ -97,7 +143,7 @@ class ScoreboardMaker:
             team.total_submissions = sum(p.submissions for p in team.results)
         self._sort_teams()
 
-    def _process_team(self, team: Team, submissions: Dict[int, List[Submission]]) -> list[
+    def _process_team(self, team: AnyTeam, submissions: Dict[int, list]) -> list[
         ScoreboardTeam]:
         problem_results = []
         upsolved_results = []
@@ -122,6 +168,7 @@ class ScoreboardMaker:
                 tiebreak=self._tiebreak_aggregate(res.tiebreak for res in problem_results),
                 virtual=team.practice and team.contest_start_time is not None,
                 practice=False,
+                imported_source=team.imported_team.source if isinstance(team, ImportedTeamEntry) else None,
             )
             if team.contest_start_time:
                 elapsed = self.now - team.contest_start_time
@@ -178,7 +225,7 @@ class ScoreboardMaker:
     def max_score(self) -> float:
         return self._round(sum(self._round(p.max_score) for p in self.scoreboard_problems))
 
-    def _contest_submissions(self, team: Team, submissions: list[Submission]) -> list[Submission]:
+    def _contest_submissions(self, team: AnyTeam, submissions: list) -> list:
         if team.practice and not team.contest_start_time:
             return []
         current_duration = self._at_time or self.contest.duration
@@ -562,12 +609,34 @@ _SCOREBOARDS: Dict[ScoringType, Type[ScoreboardMaker]] = {
 }
 
 
+def _imported_teams(contest: Contest, problems: List[ContestProblem]) -> List[ImportedTeamEntry]:
+    # Imported results only carry verdicts, so only scoreboards that need nothing more can show them.
+    if ScoringType(contest.scoring_type) != ScoringType.BINARY_WITH_PENALTY:
+        return []
+    problem_ids = {p.problem_id for p in problems}
+    entries = {
+        team.imported_team_id: ImportedTeamEntry(imported_team=team, submissions=[])
+        for team in ImportedTeam.objects.filter(contest=contest)
+    }
+    imported_submissions = ImportedSubmission.objects.filter(
+        imported_team__contest=contest, problem_id__in=problem_ids
+    ).order_by('contest_time_seconds', 'imported_submission_id')
+    for sub in imported_submissions:
+        entries[sub.imported_team_id].submissions.append(_ImportedSubmissionEntry(
+            problem_id=sub.problem_id,
+            date_created=_IMPORTED_START + datetime.timedelta(seconds=sub.contest_time_seconds),
+            current_run=_ImportedRun(verdict=Verdict(sub.verdict)),
+        ))
+    return list(entries.values())
+
+
 def load_scoreboard(contest: Contest, *, now: Optional[datetime.datetime] = None,
                     at_time: Optional[datetime.timedelta] = None) -> ScoreboardMaker:
     if not now:
         now = timezone.now()
     problems = list(contest_problems_with_grading(contest))
-    teams = list(contest_teams(contest))
+    teams: List[AnyTeam] = list(contest_teams(contest))
+    teams.extend(_imported_teams(contest, problems))
     registered_user_ids = [tm.account_id for team in teams for tm in team.teammember_set.all()]
     submissions = list(
         list_queue_submissions(registered_user_ids, [problem.problem_id for problem in problems], ascending=True))

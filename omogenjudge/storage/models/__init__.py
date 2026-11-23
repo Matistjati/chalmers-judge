@@ -10,7 +10,7 @@ from omogenjudge.storage.models.contests import ContestProblem, ContestGroupCont
     ContestStaff, ScoringType
 from omogenjudge.storage.models.submissions import SubmissionGroupRun, Submission, SubmissionRun, SubmissionCaseRun, \
     SubmissionCaseFeedback, SubmissionFiles, Status, Verdict
-from omogenjudge.storage.models.teams import TeamMember, Team
+from omogenjudge.storage.models.teams import TeamMember, Team, ImportedTeam, ImportedSubmission
 
 
 class TeamMemberInline(admin.TabularInline):
@@ -77,6 +77,7 @@ admin.site.register(ContestProblem)
 admin.site.register(ContestGroup, ContestGroupAdmin)
 admin.site.register(ContestGroupContest)
 admin.site.register(Team, TeamAdmin)
+admin.site.register(ImportedTeam)
 admin.site.register(TeamMember)
 admin.site.register(Submission)
 admin.site.register(SubmissionRun, SubmissionRunAdmin)

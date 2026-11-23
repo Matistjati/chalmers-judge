@@ -103,6 +103,14 @@
                             {% endif %}
                             <td>
                                 {{ team.team.display_name() }}
+                                {% if team.imported_source %}
+                                    <span class="badge rounded-pill bg-secondary ms-1" style="vertical-align: middle"
+                                        {% if team.team.imported_team.affiliation %}
+                                          data-bs-toggle="tooltip" data-bs-placement="top"
+                                          title="{{ team.team.imported_team.affiliation }}"
+                                        {% endif %}
+                                    >{{ team.imported_source }}</span>
+                                {% endif %}
                                 {% if team.virtual %}
                                     <span class="badge rounded-pill bg-info ms-1" style="vertical-align: middle">
                                         {% if team.virtual_time %}
@@ -156,7 +164,7 @@
                                 <td class="text-center">{{ formatting.format_score(team.total_score) }}</td>
                                 {% if scoreboard.has_penalty %}
                                     <td class="text-center">
-                                        {% if team.virtual or (contest.start_time and not team.practice) %}
+                                        {% if team.virtual or team.imported_source or (contest.start_time and not team.practice) %}
                                         {{ scoreboard.format_tiebreak(team.tiebreak) }}
                                         {% endif %}
                                     </td>
