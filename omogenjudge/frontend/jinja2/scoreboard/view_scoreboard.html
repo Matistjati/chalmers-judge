@@ -17,6 +17,7 @@
                 {{ util.countdown() }}
             </div>
             
+            <div id="scoreboard-live">
             {% if contest.public_scoreboard or contest_ended or user.is_superuser %}
                 {% if user.is_authenticated and user.account_id in scoreboard.user_to_rank %}
                     <a href="#rank-{{ scoreboard.user_to_rank[user.account_id] }}" class="btn btn-outline-primary">
@@ -177,8 +178,52 @@
                     {% endfor %}
                 </table>
             {% else %}
-            <h2 class="text-center">Scoreboard is hidden until contest is over</h1>
+            <h2 class="text-center">Scoreboard is hidden until contest is over</h2>
             {% endif %}
+            </div>
         </div>
     </div>
+    <script>
+        // Keep the standings current: refetch this page every 30 seconds and swap in the new standings, keeping
+        // the scroll position. Paused while the tab is hidden, and refreshed as soon as it is shown again.
+        (function () {
+            const REFRESH_MS = 30000;
+            let inFlight = false;
+
+            function tooltips(root) {
+                return root.querySelectorAll('[data-bs-toggle="tooltip"]');
+            }
+
+            async function refresh() {
+                if (document.hidden || inFlight) return;
+                inFlight = true;
+                try {
+                    const response = await fetch(window.location.pathname + window.location.search,
+                        {credentials: 'same-origin', cache: 'no-store'});
+                    if (!response.ok) return;
+                    const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+                    const fresh = page.getElementById('scoreboard-live');
+                    const current = document.getElementById('scoreboard-live');
+                    if (!fresh || !current) return;
+                    tooltips(current).forEach(function (el) {
+                        const tip = bootstrap.Tooltip.getInstance(el);
+                        if (tip) tip.dispose();
+                    });
+                    current.replaceWith(fresh);
+                    tooltips(fresh).forEach(function (el) {
+                        new bootstrap.Tooltip(el);
+                    });
+                } catch (e) {
+                    // Network hiccup; try again next time.
+                } finally {
+                    inFlight = false;
+                }
+            }
+
+            setInterval(refresh, REFRESH_MS);
+            document.addEventListener('visibilitychange', function () {
+                if (!document.hidden) refresh();
+            });
+        })();
+    </script>
 {% endblock %}
