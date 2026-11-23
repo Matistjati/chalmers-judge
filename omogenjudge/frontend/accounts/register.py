@@ -97,10 +97,10 @@ def register(request: OmogenRequest) -> HttpResponse:
             else:
                 account.email_validated = True
                 account.save()
+            django.contrib.auth.login(request, account)
             messages.add_message(request, messages.SUCCESS,
-                                 'Your account was successfully created. '
-                                 'You may now log in an and start solving problems!')
-            return redirect('login')
+                                 'Your account was successfully created. You can now start solving problems!')
+            return redirect('/')
     else:
         form = RegisterForm()
     args = RegisterArgs(
