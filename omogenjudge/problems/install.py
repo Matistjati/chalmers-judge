@@ -7,11 +7,11 @@ from pathlib import Path
 from typing import Optional
 
 import argparse
-import problemtools.run
 from django.db import transaction
 from problemtools import problem2html
 from problemtools.diagnostics import Diagnostics
 from problemtools.metadata import Metadata
+from problemtools.run import Program
 from problemtools.model import Problem as ToolsProblem, TestCase as ToolsCase, TestDataGroup as ToolsGroup
 
 from omogenjudge.storage.models import IncludedFiles, Problem, ProblemOutputValidator, ProblemStatement, \
@@ -107,7 +107,7 @@ def _add_testdata(problem: ToolsProblem, db_version: ProblemVersion) -> ProblemT
 def _included_files(problem: ToolsProblem) -> IncludedFiles:
     include_dict: dict[str, dict[str, str]] = {}
     for language, includes in problem.includes.languages.items():
-        include_dict[language] = {str(file.path): file.data.decode() for file in includes.files}
+        include_dict[language] = {str(file.path): file.data.decode() for file in includes.files.files}
     return IncludedFiles(files_by_language=include_dict)
 
 
@@ -121,19 +121,22 @@ def _zip_program(path) -> StoredFile:
     return insert_file(zip_buf.getbuffer())
 
 
+def _compile_program(program: Program, work_dir: str, kind: str) -> list[str]:
+    result = program.compile(Path(work_dir))
+    if not result.success:
+        raise ValueError(f"Failed to compile {kind}: {result.errmsg}")
+    assert result.executable is not None
+    return result.executable.get_runcmd(cwd=Path(work_dir))
+
+
 def _add_validator(problem: ToolsProblem) -> ProblemOutputValidator:
     # We recompile the validator to ensure that we have a directory only with a single validator present.
     # Otherwise, it's annoying to handle the case of multiple single-file validators in the same directory.
     # It also keeps us from reusing programs already compiled into verifyproblem's (now deleted) work dir.
+    validator = problem.output_validators.select(problem.format_version, problem.metadata)
     with tempfile.TemporaryDirectory() as tmp_validator:
-        validator = problemtools.run.find_programs(
-            os.path.join(problem.probdir, problem.format_version.output_validator_directory),
-            language_config=problem.language_config)[0]
-        result = validator.compile(Path(tmp_validator))
-        if not result.success:
-            raise ValueError(f"Failed to compile output validator: {result.errmsg}")
         db_validator = ProblemOutputValidator(
-            run_command=validator.get_runcmd(tmp_validator),
+            run_command=_compile_program(validator, tmp_validator, "output validator"),
             validator_zip=_zip_program(tmp_validator),
             scoring_validator=problem.metadata.legacy_custom_score
         )
@@ -143,19 +146,12 @@ def _add_validator(problem: ToolsProblem) -> ProblemOutputValidator:
 
 def _add_grader(problem: ToolsProblem) -> Optional[ProblemGrader]:
     # We recompile the grader to ensure that we have a directory only with a single grader present.
-    # Otherwise, it's annoying to handle the case of multiple single-file validators in the same directory.
+    grader = problem.graders.grader
+    if grader is None:
+        return None
     with tempfile.TemporaryDirectory() as tmp_grader:
-        graders = problemtools.run.find_programs(
-            os.path.join(problem.probdir, "graders"),
-            language_config=problem.language_config)
-        if not graders:
-            return None
-        grader = graders[0]
-        result = grader.compile(Path(tmp_grader))
-        if not result.success:
-            raise ValueError(f"Failed to compile grader: {result.errmsg}")
         db_grader = ProblemGrader(
-            run_command=grader.get_runcmd(tmp_grader),
+            run_command=_compile_program(grader, tmp_grader, "grader"),
             grader_zip=_zip_program(tmp_grader),
         )
     db_grader.save()
