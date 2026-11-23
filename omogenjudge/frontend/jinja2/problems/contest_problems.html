@@ -53,7 +53,7 @@
                 <td class="align-middle">
                     {% if team_problem_res.problem_score > 0 %}
                     <span class="text-success">
-                                +{{ team_problem_res.tries }}&nbsp;({{ scoreboard.format_tiebreak(team_problem_(res.solve_time or 0) if scoreboard.icpc_style else team_problem_res.tiebreak) }})
+                                +{{ team_problem_res.tries }}&nbsp;({{ scoreboard.format_tiebreak((team_problem_res.solve_time or 0) if scoreboard.icpc_style else team_problem_res.tiebreak) }})
                             </span>
                     {% elif team_problem_res.pending %}
                     {% if team_problem_res.tries %}
