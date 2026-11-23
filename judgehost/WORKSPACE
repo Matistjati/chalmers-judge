@@ -1904,10 +1904,10 @@ gazelle_dependencies()
 ### EVALUATOR LIB:  comment out for local development
 http_archive(
     name = "com_github_jsannemo_omogenexec",
-    sha256 = "a6c82fb574b881fd58badfd053782647da41b008ae8bfa8d9a4a8eb8e07bd521",
-    strip_prefix = "omogenexec-54d72942ba7da21987dc6ab1857420b87a2f101a",
+    sha256 = "a65a768034212ed109bcb35b91113548ef2b97f88cc96135a426315a23bdf110",
+    strip_prefix = "omogenexec-d75912aac73d9bb21e977c4a6c5a7cbfeb46bf55",
     urls = [
-        "https://github.com/Matistjati/omogenexec/archive/54d72942ba7da21987dc6ab1857420b87a2f101a.zip",
+        "https://github.com/Matistjati/omogenexec/archive/d75912aac73d9bb21e977c4a6c5a7cbfeb46bf55.zip",
     ],
 )
 ### EVALUATOR LIB:  uncomment for local development
