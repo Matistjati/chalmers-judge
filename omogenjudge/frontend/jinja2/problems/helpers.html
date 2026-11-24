@@ -15,7 +15,7 @@
 {% macro scoreboard_problem_link(scoreboard_problem) %}
     {% if scoreboard_problem.problem.label %}
         <span class="badge me-1 bg-primary"
-              style="font-size: 0.9rem">{{ scoreboard_problem.label }}</span>
+              style="font-size: 0.9rem; min-width: 2.2em">{{ scoreboard_problem.label }}</span>
     {% endif %}
     {{ link(scoreboard_problem.problem.problem) }}
 {% endmacro %}
