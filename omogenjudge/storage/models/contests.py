@@ -32,6 +32,9 @@ class Contest(models.Model):
     only_practice_contest = models.BooleanField(default=False)
     start_time = models.DateTimeField(null=True, blank=True)
     duration = models.DurationField()
+    # If set, the scoreboard freezes this long before the end: while a viewer's contest clock is in that window,
+    # other teams' submissions made in it show as pending. Applies to virtual replays too, on the viewer's clock.
+    freeze_duration = models.DurationField(null=True, blank=True)
     # If set, this contest may be started at an arbitrary time between start_time and flexible_start_window_end_time.
     flexible_start_window_end_time = models.DateTimeField(null=True, blank=True)
 

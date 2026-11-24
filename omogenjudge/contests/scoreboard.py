@@ -37,6 +37,19 @@ class _ImportedSubmissionEntry:
     current_run: _ImportedRun
 
 
+@dataclasses.dataclass(frozen=True)
+class _FrozenRun:
+    status: Status = Status.QUEUED
+
+
+@dataclasses.dataclass(frozen=True)
+class _FrozenSubmissionEntry:
+    """Stands in for a submission made during the freeze, so its result shows as pending."""
+    problem_id: int
+    date_created: datetime.datetime
+    current_run: _FrozenRun = _FrozenRun()
+
+
 @dataclasses.dataclass(eq=False)
 class ImportedTeamEntry:
     """Stands in for a Team on the scoreboard for a team imported from another judge."""
@@ -103,6 +116,8 @@ class ScoreboardMaker:
     def __init__(self, contest, problems: List[ContestProblem], teams: List[AnyTeam], *,
                  now: datetime.datetime,
                  at_time: Optional[datetime.timedelta] = None,
+                 frozen_since: Optional[datetime.timedelta] = None,
+                 freeze_exempt_team_id: Optional[int] = None,
                  tiebreak=sum):
         self.now = now
         self.contest: Contest = contest
@@ -123,6 +138,9 @@ class ScoreboardMaker:
         self.user_to_rank: Dict[int, int] = {}
         self.best_user_result: Dict[int, ScoreboardTeam] = {}
         self._at_time = at_time
+        # Contest time the scoreboard froze at, if it is frozen for this viewer; the viewer's own team stays live.
+        self.frozen_since = frozen_since
+        self._freeze_exempt_team_id = freeze_exempt_team_id
 
     def process_submissions(self, submissions: List[Submission]):
         account_to_team = {tm.account_id: team for team in self.teams for tm in team.teammember_set.all()}
@@ -149,7 +167,7 @@ class ScoreboardMaker:
         upsolved_results = []
         start_time = team.contest_start_time if team.contest_start_time else self.contest.start_time
         for scoreboard_problem in self.scoreboard_problems:
-            all_submissions = submissions[scoreboard_problem.problem.problem_id]
+            all_submissions = self._freeze(team, start_time, submissions[scoreboard_problem.problem.problem_id])
             contest_submissions = self._contest_submissions(team, all_submissions)
 
             contest_result = self._process_problem(contest_submissions, scoreboard_problem, start_time)
@@ -237,6 +255,17 @@ class ScoreboardMaker:
             if start_time and end_time and start_time <= submission.date_created <= end_time:
                 contest_submissions.append(submission)
         return contest_submissions
+
+    def _freeze(self, team: AnyTeam, start_time: Optional[datetime.datetime], submissions: list) -> list:
+        if self.frozen_since is None or not start_time:
+            return submissions
+        if isinstance(team, Team) and team.team_id == self._freeze_exempt_team_id:
+            return submissions
+        return [
+            _FrozenSubmissionEntry(problem_id=s.problem_id, date_created=s.date_created)
+            if s.date_created - start_time >= self.frozen_since else s
+            for s in submissions
+        ]
 
     @property
     def has_penalty(self):
@@ -630,8 +659,18 @@ def _imported_teams(contest: Contest, problems: List[ContestProblem]) -> List[Im
     return list(entries.values())
 
 
+def freeze_start(contest: Contest, elapsed: Optional[datetime.timedelta]) -> Optional[datetime.timedelta]:
+    """The contest time the scoreboard froze at, if a contest clock at `elapsed` is inside the freeze."""
+    if not contest.freeze_duration or elapsed is None:
+        return None
+    start = contest.duration - contest.freeze_duration
+    return start if start <= elapsed < contest.duration else None
+
+
 def load_scoreboard(contest: Contest, *, now: Optional[datetime.datetime] = None,
-                    at_time: Optional[datetime.timedelta] = None) -> ScoreboardMaker:
+                    at_time: Optional[datetime.timedelta] = None,
+                    frozen_since: Optional[datetime.timedelta] = None,
+                    freeze_exempt_team_id: Optional[int] = None) -> ScoreboardMaker:
     if not now:
         now = timezone.now()
     problems = list(contest_problems_with_grading(contest))
@@ -641,6 +680,8 @@ def load_scoreboard(contest: Contest, *, now: Optional[datetime.datetime] = None
     submissions = list(
         list_queue_submissions(registered_user_ids, [problem.problem_id for problem in problems], ascending=True))
 
-    scoreboard = _SCOREBOARDS[ScoringType(contest.scoring_type)](contest, problems, teams, now=now, at_time=at_time)
+    scoreboard = _SCOREBOARDS[ScoringType(contest.scoring_type)](
+        contest, problems, teams, now=now, at_time=at_time,
+        frozen_since=frozen_since, freeze_exempt_team_id=freeze_exempt_team_id)
     scoreboard.process_submissions(submissions)
     return scoreboard

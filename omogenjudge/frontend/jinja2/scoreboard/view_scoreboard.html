@@ -19,6 +19,12 @@
             
             <div id="scoreboard-live">
             {% if contest.public_scoreboard or contest_ended or user.is_superuser %}
+                {% if scoreboard.frozen_since is not none %}
+                    <div class="alert alert-info text-center">
+                        The scoreboard froze at {{ scoreboard.frozen_since | format_timedelta }}.
+                        Other teams' submissions after that show as pending until the contest ends.
+                    </div>
+                {% endif %}
                 {% if user.is_authenticated and user.account_id in scoreboard.user_to_rank %}
                     <a href="#rank-{{ scoreboard.user_to_rank[user.account_id] }}" class="btn btn-outline-primary">
                         Skip to your team (rank {{ scoreboard.user_to_rank[user.account_id] + 1 }})
